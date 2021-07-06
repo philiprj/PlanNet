@@ -9,7 +9,7 @@ class GNNRegressor(object):
     def __init__(self, hyperparams, s2v_module):
         super(GNNRegressor, self).__init__()
         self.hyperparams = hyperparams
-
+        # Selects the type of embedding method - mean field or loopy beleif propergation
         if hyperparams['embedding_method'] == 'mean_field':
             self.model = EmbedMeanField
         elif hyperparams['embedding_method'] == 'loopy_bp':
@@ -17,13 +17,12 @@ class GNNRegressor(object):
         else:
             raise ValueError(f"unknown embedding method {hyperparams['embedding_method']}")
 
-
     def run_s2v_embedding(self, batch_graph, node_feat, prefix_sum):
         """
-        Test  comment
-        :param batch_graph:
-        :param node_feat:
-        :param prefix_sum:
+        Gets graph embedding
+        :param batch_graph: Batch of graphs?
+        :param node_feat:  Node features
+        :param prefix_sum:  Unknown for now
         :return:
         """
         if get_device_placement() == 'GPU':

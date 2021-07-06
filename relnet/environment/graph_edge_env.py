@@ -1,11 +1,10 @@
-import numpy as np
-import math
 from copy import deepcopy
-
-from relnet.state.graph_state import S2VGraph
+import numpy as np
 from relnet.state.network_generators import NetworkGenerator
 
+
 class GraphEdgeEnv(object):
+
     def __init__(self, objective_function, objective_function_kwargs,
                  edge_budget_percentage):
         self.objective_function = objective_function
@@ -18,7 +17,6 @@ class GraphEdgeEnv(object):
 
         self.reward_eps = 1e-4
         self.reward_scale_multiplier = 100
-
 
     def setup(self, g_list, initial_objective_function_values, training=False):
         self.g_list = g_list
@@ -89,7 +87,6 @@ class GraphEdgeEnv(object):
 
         return edge_budgets
 
-
     @staticmethod
     def get_valid_actions(g, banned_actions):
         all_nodes_set = g.all_nodes_set
@@ -138,7 +135,6 @@ class GraphEdgeEnv(object):
                         self.logger_instance.error(f"the remaining budget: {self.get_remaining_budget(i)}")
                         g = self.g_list[i]
                         self.logger_instance.error(f"first_node selection: {g.first_node}")
-
 
                 remaining_budget = self.get_remaining_budget(i)
                 self.g_list[i], updated_budget = self.apply_action(self.g_list[i], actions[i], remaining_budget)

@@ -2,13 +2,13 @@ import sys
 from pathlib import Path
 
 sys.path.append('/relnet')
-
 from relnet.agent.pytorch_agent import PyTorchAgent
 from relnet.agent.rnet_dqn.rnet_dqn_agent import RNetDQNAgent
 from relnet.environment.graph_edge_env import GraphEdgeEnv
 from relnet.evaluation.file_paths import FilePaths
 from relnet.objective_functions.objective_functions import CriticalFractionTargeted, CriticalFractionRandom
 from relnet.state.network_generators import NetworkGenerator, BANetworkGenerator
+
 
 def get_gen_params():
     gp = {}
@@ -17,6 +17,7 @@ def get_gen_params():
     gp['m_percentage_er'] = 20
     gp['m'] = NetworkGenerator.compute_number_edges(gp['n'], gp['m_percentage_er'])
     return gp
+
 
 def get_options(file_paths):
     options = {"log_progress": True,
@@ -27,11 +28,13 @@ def get_options(file_paths):
                "restore_model": False}
     return options
 
+
 def get_file_paths():
     parent_dir = '/experiment_data'
     experiment_id = 'development'
     file_paths = FilePaths(parent_dir, experiment_id)
     return file_paths
+
 
 if __name__ == '__main__':
     num_training_steps = 5000

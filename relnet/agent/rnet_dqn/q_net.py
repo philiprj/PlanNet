@@ -175,6 +175,6 @@ class NStepQNet(nn.Module):
         self.num_steps = num_steps
 
     def forward(self, time_t, states, actions, greedy_acts = False):
-        assert time_t >= 0 and time_t < self.num_steps
+        assert (time_t >= 0) and (time_t < self.num_steps)
 
         return self.list_mod[time_t](states, actions, greedy_acts)

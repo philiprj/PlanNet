@@ -8,6 +8,7 @@ import torch.nn.functional as F
 
 from relnet.utils.config_utils import get_device_placement
 
+# TODO: What is going on here?
 sys.path.append('/usr/lib/pytorch_structure2vec/s2v_lib')
 from s2v_lib import S2VLIB
 from pytorch_util import weights_init
