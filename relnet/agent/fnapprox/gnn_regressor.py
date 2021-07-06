@@ -19,6 +19,13 @@ class GNNRegressor(object):
 
 
     def run_s2v_embedding(self, batch_graph, node_feat, prefix_sum):
+        """
+        Test  comment
+        :param batch_graph:
+        :param node_feat:
+        :param prefix_sum:
+        :return:
+        """
         if get_device_placement() == 'GPU':
             node_feat = node_feat.cuda()
             prefix_sum = prefix_sum.cuda()
