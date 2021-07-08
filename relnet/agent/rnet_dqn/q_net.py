@@ -4,18 +4,24 @@ import torch
 from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
-
 from relnet.agent.fnapprox.gnn_regressor import GNNRegressor
 from relnet.utils.config_utils import get_device_placement
 
+# Add the structure2vec to the path and imports pytoch_util - weight_init from it
 sys.path.append('/usr/lib/pytorch_structure2vec/s2v_lib')
 from pytorch_util import weights_init
 
 
 def jmax(arr, prefix_sum):
+    """
+    # TODO: what does this do - and what are the parameters
+    :param arr:
+    :param prefix_sum:
+    :return:
+    """
     actions = []
     values = []
-    for i in range(len(prefix_sum[0:,])):
+    for i in range(len(prefix_sum[0:, ])):
         if i == 0:
             start_index = 0
             end_index = prefix_sum[i]
@@ -37,6 +43,13 @@ def jmax(arr, prefix_sum):
 
 
 def greedy_actions(q_values, v_p, banned_list):
+    """
+    Takes the q values and non-eligible actions and returns the
+    :param q_values:
+    :param v_p:
+    :param banned_list:
+    :return:
+    """
     actions = []
     offset = 0
     banned_acts = []
@@ -125,7 +138,7 @@ class QNet(GNNRegressor, nn.Module):
         picked_ones = []
         for i in range(len(batch_graph)):
             if picked_nodes is not None and picked_nodes[i] is not None:
-                assert picked_nodes[i] >= 0 and picked_nodes[i] < batch_graph[i].num_nodes
+                assert (picked_nodes[i] >= 0) and (picked_nodes[i] < batch_graph[i].num_nodes)
                 picked_ones.append(n_nodes + picked_nodes[i])
             n_nodes += batch_graph[i].num_nodes
             prefix_sum.append(n_nodes)

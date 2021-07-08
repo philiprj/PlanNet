@@ -12,14 +12,22 @@ from relnet.utils.config_utils import get_device_placement
 
 
 class RNetDQNAgent(PyTorchAgent):
+    # Defines the agent name and parameters
     algorithm_name = "rnet_dqn"
     is_deterministic = False
     is_trainable = True
 
     def __init__(self, environment):
+        """
+        :param environment: The network the agent is playing on
+        """
         super().__init__(environment)
 
     def setup(self, options, hyperparams):
+        """
+        :param options: Agent options
+        :param hyperparams: Training hyperparameters
+        """
         super().setup(options, hyperparams)
         self.setup_nets()
         self.take_snapshot()
@@ -78,6 +86,9 @@ class RNetDQNAgent(PyTorchAgent):
                 break
 
     def setup_nets(self):
+        """
+        Initialises the agent network for training
+        """
         self.net = NStepQNet(self.hyperparams, num_steps=2)
         self.old_net = NStepQNet(self.hyperparams, num_steps=2)
         if get_device_placement() == 'GPU':

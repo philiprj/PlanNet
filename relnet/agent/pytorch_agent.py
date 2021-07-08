@@ -275,6 +275,6 @@ class PyTorchAgent(Agent):
         self.hist_out = open(model_history_filename, 'a')
 
     def finalize(self):
-        # Closes out the hist out file for writting
+        # Closes out the hist out file for writing
         if self.hist_out is not None and not self.hist_out.closed:
             self.hist_out.close()
