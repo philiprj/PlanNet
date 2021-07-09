@@ -91,13 +91,20 @@ class RNetDQNAgent(PyTorchAgent):
         """
         self.net = NStepQNet(self.hyperparams, num_steps=2)
         self.old_net = NStepQNet(self.hyperparams, num_steps=2)
+        # Sends Network to GPU or CPU depending on what is available
         if get_device_placement() == 'GPU':
             self.net = self.net.cuda()
             self.old_net = self.old_net.cuda()
+        # Restores previous model if selected
         if self.restore_model:
             self.restore_model_from_checkpoint()
 
     def setup_mem_pool(self, num_steps, mem_pool_to_steps_ratio):
+        """
+        Sets up a replay buffer for learning from past experience
+        :param num_steps: Number of steps
+        :param mem_pool_to_steps_ratio:
+        """
         exp_replay_size = int(num_steps * mem_pool_to_steps_ratio)
         self.mem_pool = NstepReplayMem(memory_size=exp_replay_size, n_steps=2)
 
