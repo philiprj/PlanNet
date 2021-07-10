@@ -2,9 +2,7 @@ import json
 import math
 from abc import ABC, abstractmethod
 from pathlib import Path
-
 import networkx as nx
-
 from relnet.evaluation.file_paths import FilePaths
 from relnet.state.graph_state import S2VGraph
 from relnet.utils.config_utils import get_logger_instance

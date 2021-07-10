@@ -8,6 +8,7 @@ import warnings
 
 budget_eps = 1e-5
 
+
 class S2VGraph(object):
     def __init__(self, g):
         self.num_nodes = g.number_of_nodes()
