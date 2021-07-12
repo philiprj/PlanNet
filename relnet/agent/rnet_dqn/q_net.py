@@ -14,7 +14,7 @@ from pytorch_util import weights_init
 
 def jmax(arr, prefix_sum):
     """
-    # TODO: what does this do - and what are the parameters
+    # Selects the action with the highest value for each graph
     :param arr: Array of action values
     :param prefix_sum: A prefix sum is a sequence of partial sums of a given sequence.
     For example, the cumulative sums of the sequence {a, b, c, …} are a, a+b, a+b+c and so on. this is used to track
@@ -43,7 +43,7 @@ def jmax(arr, prefix_sum):
         # Append the action and value to the list
         actions.append(act)
         values.append(val)
-    # Conver to a torch tensor
+    # Convert to a torch tensor
     actions_tensor = torch.LongTensor(actions)
     values_tensor = torch.Tensor(values)
     # Return these tensors
@@ -223,7 +223,7 @@ class QNet(GNNRegressor, nn.Module):
             # TODO: what does this do?
             graph_embed = self.rep_global_embed(graph_embed, prefix_sum)
         else:
-            # TODO: what does this do
+            # adds an offset to pick the nodes from the graph we are looking at
             shifted = self.add_offset(actions, prefix_sum)
             embed = embed[shifted, :]
         # Concatenate the embedded and graph embedded along 1st dim

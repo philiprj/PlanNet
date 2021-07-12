@@ -206,7 +206,7 @@ class RNetDQNAgent(PyTorchAgent):
 
     def agent_exploration_policy(self, i):
         """
-        :param i: TODO what is this?
+        :param i: Index of the graph under consideration
         :return: Returns a random action
         """
         return self.pick_random_actions(i)

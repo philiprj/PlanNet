@@ -94,7 +94,6 @@ class SLAgent(PyTorchAgent, BaselineAgent):
         _, batch_pred_values = self.net(batch_graph)
         return batch_true_obj_values, batch_pred_values
 
-
     def post_env_setup(self):
         pass
 

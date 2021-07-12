@@ -183,7 +183,6 @@ class GraphEdgeEnv(object):
         """
         Similar to the apply action method but applied in place rather than on a copy
         (is this not the same with the copy set to False?)
-        Also never seems to be uses! - TODO: delete method
         """
         if g.first_node is None:
             g.first_node = action

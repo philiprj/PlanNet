@@ -9,15 +9,14 @@ from relnet.utils.config_utils import get_device_placement
 
 
 class PyTorchAgent(Agent):
-    # Determines batch size for experiance replay
+    # Determines batch size for experience replay
     DEFAULT_BATCH_SIZE = 50
 
     def __init__(self, environment):
         """
-        :param environment: Graph enviroment agent in operating in
+        :param environment: Graph environment agent in operating in
         """
         super().__init__(environment)
-        # TODO: Doesn't appear to be used?
         self.enable_assertions = True
         # USed for logging history
         self.hist_out = None
@@ -29,7 +28,7 @@ class PyTorchAgent(Agent):
         self.best_validation_loss = float("inf")
         # Counter for position in buffer or dataset of graphs?
         self.pos = 0
-        # TODO: Doesn't seem to be used
+        # Step count - not sure if its used
         self.step = 0
 
     def setup_graphs(self, train_g_list, validation_g_list):
@@ -134,7 +133,7 @@ class PyTorchAgent(Agent):
         validation_loss = max_improvement - performance
         # If logging - do logs
         if self.log_tf_summaries:
-            # TODO: should this import be in main imports?
+            # Maybe should be in main imports but uses here to save memory if not required
             from tensorflow import Summary
             # Uses tensorflow to write a summary - do we need this?
             validation_summary = Summary(value=[
