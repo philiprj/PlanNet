@@ -1,6 +1,5 @@
 import math
 from copy import deepcopy
-
 import networkx as nx
 import numpy as np
 import xxhash
@@ -127,6 +126,7 @@ class S2VGraph(object):
     def __repr__(self):
         gh = get_graph_hash(self, size=32, include_first=True)
         return f"Graph State with hash {gh}"
+
 
 def get_graph_hash(g, size=32, include_first=False):
     if size == 32:

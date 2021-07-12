@@ -1,12 +1,11 @@
 import random
 from abc import ABC, abstractmethod
 from copy import deepcopy
-
 import numpy as np
 import torch
-
 from relnet.evaluation.eval_utils import eval_on_dataset, get_values_for_g_list
 from relnet.utils.config_utils import get_logger_instance
+
 
 class Agent(ABC):
     def __init__(self, environment):
