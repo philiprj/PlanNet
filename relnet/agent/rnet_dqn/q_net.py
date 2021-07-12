@@ -62,7 +62,7 @@ def greedy_actions(q_values, v_p, banned_list):
     offset = 0
     # Init banned actions to be empty list
     banned_acts = []
-    # Comvert prefix sum to numpy -> CPU
+    # Convert prefix sum to numpy -> CPU
     prefix_sum = v_p.data.cpu().numpy()
     # Loop through prefix sum
     for i in range(len(prefix_sum)):
@@ -74,11 +74,11 @@ def greedy_actions(q_values, v_p, banned_list):
                 banned_acts.append(offset + j)
         # Update offset for current position in the graph list
         offset = prefix_sum[i]
-    # Data removes the computation history/graph and clones to a new place in memoery
+    # Data removes the computation history/graph and clones to a new place in memory
     q_values = q_values.data.clone()
     # Resize the array to be the len of q values (1D)
     q_values.resize_(len(q_values))
-    # Conver the banned acts to tensor and get GPU/CPU details
+    # Convert the banned acts to tensor and get GPU/CPU details
     banned = torch.LongTensor(banned_acts)
     device_placement = get_device_placement()
     # Send to GPU if available
@@ -230,6 +230,7 @@ class QNet(GNNRegressor, nn.Module):
         embed_s_a = torch.cat((embed, graph_embed), dim=1)
         # Apply layers and relu activation
         embed_s_a = F.relu(self.linear_1(embed_s_a))
+        # TODO: Linear output goes to a single value - how does this get converted to an action?
         raw_pred = self.linear_out(embed_s_a)
         # If taking greedy actions then take raw prediction and pick actions
         if greedy_acts:
@@ -240,6 +241,9 @@ class QNet(GNNRegressor, nn.Module):
 
 class NStepQNet(nn.Module):
     """
+    TODO: What exactly is going on here?
+    Is num_steps = 2, with step 0 being  the first action and step 1 being the 2nd action? Passed to two networks?
+
     Defines the N step Deep Q-Network
     """
     def __init__(self, hyperparams, num_steps):
@@ -260,9 +264,9 @@ class NStepQNet(nn.Module):
     def forward(self, time_t, states, actions, greedy_acts=False):
         """
         Defines the forward pass of the network
-        :param time_t: Current time step
-        :param states: States in the batch
-        :param actions: Actions in the batch
+        :param time_t: Current time step (0 or 1)
+        :param states: States in the batch -
+        :param actions: Actions in the batch - seems to be None in the call
         :param greedy_acts: Bool for greedy actions
         :return: Output of the torch ModuleList
         """
