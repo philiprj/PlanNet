@@ -10,6 +10,7 @@ from relnet.agent.supervised.sl_net import SLNet
 from relnet.agent.pytorch_agent import PyTorchAgent
 from relnet.utils.config_utils import get_device_placement
 
+
 class SLAgent(PyTorchAgent, BaselineAgent):
     algorithm_name = "sl"
     is_deterministic = False

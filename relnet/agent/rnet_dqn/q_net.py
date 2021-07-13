@@ -218,9 +218,11 @@ class QNet(GNNRegressor, nn.Module):
         embed, graph_embed, prefix_sum = self.run_s2v_embedding(batch_graph, node_feat, prefix_sum)
         # Convert prefix sum to torch tensor
         prefix_sum = Variable(prefix_sum)
-        # If no actions
+        # If no actions -
         if actions is None:
             # TODO: what does this do?
+            # Repeats the state embeddings for number of actions - e.g. number of nodes
+            # Stack embeddings so we have one for each action available
             graph_embed = self.rep_global_embed(graph_embed, prefix_sum)
         else:
             # adds an offset to pick the nodes from the graph we are looking at
@@ -231,6 +233,7 @@ class QNet(GNNRegressor, nn.Module):
         # Apply layers and relu activation
         embed_s_a = F.relu(self.linear_1(embed_s_a))
         # TODO: Linear output goes to a single value - how does this get converted to an action?
+        # Estimate the Q(s,a) for each available action - batches each available action together
         raw_pred = self.linear_out(embed_s_a)
         # If taking greedy actions then take raw prediction and pick actions
         if greedy_acts:

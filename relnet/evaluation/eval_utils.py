@@ -5,6 +5,7 @@ from relnet.utils.config_utils import local_seed
 from itertools import product
 import numpy as np
 
+
 def generate_search_space(parameter_grid,
                           random_search=False,
                           random_search_num_options=20,

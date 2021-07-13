@@ -69,6 +69,7 @@ def gnn_spmm(sp_mat, dense_mat):
 class EmbedMeanField(nn.Module):
     """
     EmbedMeanField uses a Mean Field approach to generate an embedding for the graph
+    Used when we don't have edge properties
     """
     def __init__(self, latent_dim, output_dim, num_node_feats, num_edge_feats, max_lv=3):
         """
@@ -191,6 +192,7 @@ class EmbedMeanField(nn.Module):
 
 
 class EmbedLoopyBP(nn.Module):
+    # Used when we have edge properties
     def __init__(self, latent_dim, output_dim, num_node_feats, num_edge_feats, max_lv=3):
         """
         Performs inference using a loop belief propagation approach
