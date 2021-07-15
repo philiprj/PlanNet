@@ -123,6 +123,7 @@ class NstepReplayMemCell(object):
 
 class NstepReplayMem(object):
     def __init__(self, memory_size, n_steps, balance_sample=False):
+        # Creates ones buffer for each step in the MDP for the total action
         self.mem_cells = []
         for i in range(n_steps - 1):
             self.mem_cells.append(NstepReplayMemCell(memory_size, False))
@@ -132,6 +133,7 @@ class NstepReplayMem(object):
         self.memory_size = memory_size
 
     def add(self, s_t, a_t, r_t, s_prime, terminal, t):
+        # Adds to the buffer for specified step
         self.mem_cells[t].add(s_t, a_t, r_t, s_prime, terminal)
 
     def add_list(self, list_st, list_at, list_rt, list_sp, list_term, t):

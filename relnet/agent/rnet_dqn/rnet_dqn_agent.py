@@ -68,19 +68,27 @@ class RNetDQNAgent(PyTorchAgent):
                 self.take_snapshot()
             # Check validation loss each step
             self.check_validation_loss(self.step, max_steps)
-            # Sample memory batch
+            """
+            Sample memory batch
+            cur_time: time step {0,1} for the action
+            list_st: (graph state, selected node - none if no selection, banned actions - empty if no selection) 
+            list_as: action selected at s
+            list_rt: reward received after action selected - 0 if non-terminal 
+            list_s_primes: s' - graph state after selected action  
+            list_term: list of terminal state where no reward if received
+            """
             cur_time, list_st, list_at, list_rt, list_s_primes, list_term = self.mem_pool.sample(
                 batch_size=self.batch_size)
             # Get target tensor and move to GPU
             list_target = torch.Tensor(list_rt)
             if get_device_placement() == 'GPU':
                 list_target = list_target.cuda()
-            # List to store values
+            # List to store s' which excludes the terminal s states - these are given rewards instantly in list_target
             cleaned_sp = []
             nonterms = []
-            # Loop through state list
+            # Loop through state list - if the next graph state in None then s in terminal state - so do not add
             for i in range(len(list_st)):
-                # If list_term is not False - append cleaned s' and track index
+                # If list_term is not none - append cleaned s' and track index
                 if not list_term[i]:
                     cleaned_sp.append(list_s_primes[i])
                     nonterms.append(i)
@@ -88,15 +96,15 @@ class RNetDQNAgent(PyTorchAgent):
             if len(cleaned_sp):
                 # Unzip to get banned values
                 _, _, banned = zip(*cleaned_sp)
-                # Get the next q values
+                # Get the next q values for each node in each graph using the target network
                 _, q_t_plus_1, prefix_sum_prime = self.old_net((cur_time + 1) % 2, cleaned_sp, None)
-                # Get the greedy action q values
+                # Get the greedy actions using the q values, and noting the banned actions
                 _, q_rhs = greedy_actions(q_t_plus_1, prefix_sum_prime, banned)
                 # Update the targets to be the greedy q values
                 list_target[nonterms] = q_rhs
-            # Conver to torch tensor and n x 1 tensor
+            # Convert to torch tensor and n x 1 tensor
             list_target = Variable(list_target.view(-1, 1))
-            # Feed to the network to get the q values
+            # Feed to the main network to get the q values for the states and actions selected
             _, q_sa, _ = self.net(cur_time % 2, list_st, list_at)
             # Calculates the loss use MSE from predicted and target values
             loss = F.mse_loss(q_sa, list_target)
@@ -172,7 +180,7 @@ class RNetDQNAgent(PyTorchAgent):
         if greedy:
             return self.do_greedy_actions(t)
         else:
-            # If t is devisbale by 2 (should this not be eps_step_denominator?)
+            # If t is divisible by 2 (should this not be eps_step_denominator?)
             if t % 2 == 0:
                 # Decay epsilon
                 self.eps = self.eps_end + max(0., (self.eps_start - self.eps_end)
@@ -264,7 +272,7 @@ class RNetDQNAgent(PyTorchAgent):
             # If more than one state is non terminal then add to the memory pool
             if len(nonterm_at) > 0:
                 self.mem_pool.add_list(nonterm_st, nonterm_at, rewards, nonterm_s_prime, [False] * len(nonterm_at), t % 2)
-            # Increment the timestep
+            # Increment the time step
             t += 1
         # List the final actions, next states, and get the environment rewards
         final_at = list(final_acts)

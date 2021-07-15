@@ -43,10 +43,10 @@ def get_file_paths():
 
 if __name__ == '__main__':
     # Defines the number of training steps, and graphs for train/validation/test
-    num_training_steps = 5000
-    num_train_graphs = 100
-    num_validation_graphs = 20
-    num_test_graphs = 20
+    num_training_steps = 100
+    num_train_graphs = 2
+    num_validation_graphs = 1
+    num_test_graphs = 1
     # Gets the training parameters and save paths
     gen_params = get_gen_params()
     file_paths = get_file_paths()

@@ -51,7 +51,7 @@ class PyTorchAgent(Agent):
 
     def advance_pos_and_sample_indices(self):
         """
-        What are these indeices used for??
+        What are these indices used for??
         :return: Selected indices
         """
         # If reaches end of buffer/dataset, reset and shuffle
@@ -65,9 +65,9 @@ class PyTorchAgent(Agent):
 
     def save_model_checkpoints(self):
         """
-        Saves the model paramters to the specified path
+        Saves the model parameters to the specified path
         """
-        # I think foward slashes act like sub directories - uses pathlib library
+        # I think forward slashes act like sub directories - uses pathlib library
         model_dir = self.checkpoints_path / self.model_identifier_prefix
         model_dir.mkdir(parents=True, exist_ok=True)
         model_path = model_dir / f"{self.algorithm_name}_agent.model"

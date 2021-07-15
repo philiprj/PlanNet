@@ -12,7 +12,7 @@ class GraphEdgeEnv(object):
         """
         Initialises the Graph Class
         :param objective_function: Objective function used to value state
-        :param objective_function_kwargs: objective function keyword arguments
+        :param objective_function_kwargs: objective function keyword arguments in a dict (random seed, num mc sims)
         :param edge_budget_percentage: budget as a percentage of the number of edges
         """
         # Init the parameters
@@ -20,7 +20,7 @@ class GraphEdgeEnv(object):
         self.original_objective_function_kwargs = objective_function_kwargs
         self.objective_function_kwargs = deepcopy(self.original_objective_function_kwargs)
         self.edge_budget_percentage = edge_budget_percentage
-        # Number of steps in the MDP
+        # Number of steps in the MDP - step 1 selected from node - step 2 selected to node
         self.num_mdp_substeps = 2
         # Parameters for the reward
         self.reward_eps = 1e-4
@@ -198,7 +198,7 @@ class GraphEdgeEnv(object):
     def step(self, actions):
         """
         Takes a step in the environment given the actions
-        :param actions: Actions for each graph
+        :param actions: List of nodes - corresponds to actions for each graph
         """
         # Loop through each graph
         for i in range(len(self.g_list)):

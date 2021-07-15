@@ -40,6 +40,7 @@ class MySpMM(torch.autograd.Function):
     @staticmethod
     def backward(ctx, grad_output):
         """
+        This method doesn't appear to be used?
         Defines the backward pass
         :param ctx: saved values from the forward pass
         :param grad_output: Loss with respect to the output
@@ -103,8 +104,8 @@ class EmbedMeanField(nn.Module):
         """
         Defines the forward pass of the graph network
         :param graph_list: List of graphs in dataset
-        :param node_feat: Node features
-        :param edge_feat: Edge features
+        :param node_feat: Node features - [1,0] indicating if the node is available?
+        :param edge_feat: Edge features - Will be None for us
         :param pool_global: bool - final outputs from the the node/edge embeddings are pooled to get output
         :param n2n_grad: Bool for node to node gradient
         :param e2n_grad: Bool for edge to node gradient
@@ -123,7 +124,7 @@ class EmbedMeanField(nn.Module):
         # If using edge features
         if edge_feat is not None:
             edge_feat = Variable(edge_feat)
-        # Convert to tesnsor with gradient if required
+        # Convert to tensor with gradient if required
         n2n_sp = Variable(n2n_sp, requires_grad=n2n_grad)
         e2n_sp = Variable(e2n_sp, requires_grad=e2n_grad)
         subg_sp = Variable(subg_sp)
@@ -153,7 +154,7 @@ class EmbedMeanField(nn.Module):
         # If we are using edge features then get the edge hidden values, pool the values and increment message
         if edge_feat is not None:
             input_edge_linear = self.w_e2l(edge_feat)
-            # TODO: what does this do?
+            # Call the GNN SPMM to combine features
             e2npool_input = gnn_spmm(e2n_sp, input_edge_linear)
             input_message += e2npool_input
         # Take ReLU activation
@@ -168,7 +169,7 @@ class EmbedMeanField(nn.Module):
             n2npool = gnn_spmm(n2n_sp, cur_message_layer)
             # Hidden layer 2
             node_linear = self.conv_params(n2npool)
-            # Combine the node and input message
+            # Combine the node and input message - number of nodes x hidden dims
             merged_linear = node_linear + input_message
             # Apply ReLU function
             cur_message_layer = F.relu(merged_linear)
