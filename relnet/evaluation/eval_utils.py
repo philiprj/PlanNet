@@ -10,6 +10,11 @@ def generate_search_space(parameter_grid,
                           random_search=False,
                           random_search_num_options=20,
                           random_search_seed=42):
+    """
+    Performs a grid search for parameters - not used here for computational purposes.
+    :return: reduced search space for parameter tuning
+    """
+
     combinations = list(product(*parameter_grid.values()))
     search_space = {i: combinations[i] for i in range(len(combinations))}
 
@@ -25,6 +30,10 @@ def generate_search_space(parameter_grid,
 
 
 def get_values_for_g_list(agent, g_list, initial_obj_values, validation, make_action_kwargs):
+    """
+    Runs the action selection until terminal state and gets objective function values.
+    :return:
+    """
     if initial_obj_values is None:
         obj_values = agent.environment.get_objective_function_values(g_list)
     else:
@@ -47,11 +56,14 @@ def get_values_for_g_list(agent, g_list, initial_obj_values, validation, make_ac
     final_obj_values = agent.environment.get_final_values()
     return obj_values, final_obj_values
 
-def eval_on_dataset(initial_objective_function_values,
-                    final_objective_function_values):
+
+def eval_on_dataset(initial_objective_function_values, final_objective_function_values):
+    # returns the mean over the entire dataset
     return np.mean(final_objective_function_values - initial_objective_function_values)
 
+
 def record_episode_histories(agent, g_list):
+    # Records the state-action histories over the graphs until terminal.
     states, actions, rewards, initial_values = [], [], [], []
 
     nets = [deepcopy(g) for g in g_list]
