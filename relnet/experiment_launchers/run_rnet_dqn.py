@@ -14,7 +14,7 @@ def get_gen_params():
     # Defines the network generation parameters
     gp = {}
     # Nodes
-    gp['n'] = 20
+    gp['n'] = 25
     gp['m_ba'] = 2
     # Number of edges compared to nodes
     gp['m_percentage_er'] = 20
@@ -54,7 +54,7 @@ if __name__ == '__main__':
     options = get_options(file_paths)
     storage_root = Path('/experiment_data/stored_graphs')
     original_dataset_dir = Path('/experiment_data/real_world_graphs/processed_data')
-    kwargs = {'store_graphs': True, 'graph_storage_root': storage_root}
+    kwargs = {'store_graphs': False, 'graph_storage_root': storage_root}
     # Generate graphs class using Barabasi–Albert
     gen = BANetworkGenerator(**kwargs)
     # Generate random seeds for create graphs

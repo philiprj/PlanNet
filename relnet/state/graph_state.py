@@ -12,6 +12,7 @@ class S2VGraph(object):
     # Takes a NetworkX graph and converts to a S2V object
     def __init__(self, g):
         """
+        # TODO: add game-type as input
         :param g: NetworkX graph
         """
         # Get the number of nodes, labels and set for quick comparison
@@ -32,8 +33,13 @@ class S2VGraph(object):
         self.node_degrees = np.array([deg for (node, deg) in sorted(g.degree(), key=lambda deg_pair: deg_pair[0])])
         # Init node to none
         self.first_node = None
-        # Unknown variable atm
-        self.dynamic_edges = None
+
+        # Create a dict to store current actions and rewards
+        self.actions = {}
+        self.rewards = {}
+        # Populate actions and find nash equilibrium
+        self.get_actions_from_nx(g)
+        g = self.find_nash(game='majority')
 
     def add_edge(self, first_node, second_node):
         """
@@ -45,23 +51,11 @@ class S2VGraph(object):
         # Convert to NetworkX for change - then add edge using inbuilt function
         nx_graph = self.to_networkx()
         nx_graph.add_edge(first_node, second_node)
+        # Apply current actions to graph
+        nx_graph = self.apply_actions_2_nx(nx_graph)
         # Convert back to S2V object and return
         s2v_graph = S2VGraph(nx_graph)
         return s2v_graph, 1
-
-    def add_edge_dynamically(self, first_node, second_node):
-        """
-        TODO: what is this for?
-        Adds edge between two specified nodes without changing the underlying NetworkX object
-        :param first_node: Start node
-        :param second_node: End Node
-        :return: 1 to conf
-        """
-        # Adds to list of dynamic_edges and increments degree count
-        self.dynamic_edges.append((first_node, second_node))
-        self.node_degrees[first_node] += 1
-        self.node_degrees[second_node] += 1
-        return 1
 
     def populate_banned_actions(self, budget=None):
         # If a budget is given and the current budget is less than minimum budget then set all actions to banned
@@ -79,7 +73,7 @@ class S2VGraph(object):
 
     def get_invalid_first_nodes(self, budget=None):
         """
-        :param budget: TODO: this is unused?
+        :param budget:
         :return: Set of unavailable start nodes which are already connected to all other nodes
         """
         return set([node_id for node_id in self.node_labels if self.node_degrees[node_id] == (self.num_nodes - 1)])
@@ -100,25 +94,8 @@ class S2VGraph(object):
         results.update(np.ravel(existing_left[:, 1]))
         existing_right = existing_edges[existing_edges[:, 1] == query_node]
         results.update(np.ravel(existing_right[:, 0]))
-        # Compare to the list of dynamic_edges (the ones not on NetworkX graph) and update set
-        if self.dynamic_edges is not None:
-            dynamic_left = [entry[0] for entry in self.dynamic_edges if entry[0] == query_node]
-            results.update(dynamic_left)
-            dynamic_right = [entry[1] for entry in self.dynamic_edges if entry[1] == query_node]
-            results.update(dynamic_right)
         # return the complete set
         return results
-
-    def init_dynamic_edges(self):
-        # Init dynamic_edges to empty list
-        self.dynamic_edges = []
-
-    def apply_dynamic_edges(self):
-        # Applies the stored dynamic_edges to the networkX graph then converts back to S2V object
-        nx_graph = self.to_networkx()
-        for edge in self.dynamic_edges:
-            nx_graph.add_edge(edge[0], edge[1])
-        return S2VGraph(nx_graph)
 
     def to_networkx(self):
         # Takes the stores edges and makes the NetworkX graph from the edges
@@ -167,6 +144,95 @@ class S2VGraph(object):
             nx_graph = self.to_networkx()
             adj_matrix = np.asarray(nx.convert_matrix.to_numpy_matrix(nx_graph, nodelist=self.node_labels))
         return adj_matrix
+
+    def apply_actions_2_nx(self, g=None):
+        """
+        Applies the actions to a NetworkX graph
+        :param g: Takes a NetworkX graph to make changes to - if None then applies changes to self.
+        :return: NetworkX graph with actions and reward attributes applied
+        """
+        if g is None:
+            g = self.to_networkx()
+        # Loop elements in the graph
+        for i in self.node_labels:
+            # Set the actions and rewards from the dict of node labels
+            g.nodes[i]['action'] = self.actions[i]
+            g.nodes[i]['reward'] = self.rewards[i]
+
+        return g
+
+    def get_actions_from_nx(self, g):
+        """
+        Takes a Networkx graph with node attributes {action, reward} and gets the attributes
+        :param g: Networkx graph with node attributes {action, reward}
+        """
+        assert ('action' in g.nodes[self.node_labels[0]]) and ('reward' in g.nodes[self.node_labels[0]])
+
+        for i in self.node_labels:
+            self.actions[i] = g.nodes[i]['action']
+            self.rewards[i] = g.nodes[i]['reward']
+
+    def find_nash(self, game='majority'):
+        """
+        Find the nash equilibrium by playing best response in rounds
+        :param game: Game we are playing - currently implemented {majority, pgg}
+        :return: NetworkX graph in equilibrium state
+        """
+        assert game in ['majority', 'pgg']
+        # Convert to NetworkX
+        g = self.apply_actions_2_nx()
+        # Set bool for monitoring if an equilibrium has been reached
+        equilibrium = False
+        # Get the actions for each player
+        curr_actions = deepcopy(self.actions)
+        # Loop while not converged
+        c = 0
+        while not equilibrium:
+            # Loop through each node and get new actions
+            for i in g.nodes:
+                # Get the neighbors actions
+                neighbors_actions = [g.nodes[n]['action'] for n in g.neighbors(i)]
+                # Select the action based on the game being played
+                if game == 'majority':
+                    # If more are playing 1 then pick 1, Otherwise pick 0
+                    if len([a for a in neighbors_actions if a == 1]) >= len([a for a in neighbors_actions if a == 0]):
+                        # Updates the S2V state and NX graph
+                        self.actions[i], g.nodes[i]['action'] = 1., 1.
+                    else:
+                        self.actions[i], g.nodes[i]['action'] = 0., 0.
+                elif game == 'pgg':
+                    # If any neighboring agents are contributing then chose to defect
+                    if 1 in neighbors_actions:
+                        self.actions[i], g.nodes[i]['action'] = 0., 0.
+                    else:
+                        self.actions[i], g.nodes[i]['action'] = 1., 1.
+            # If we have reached equilibrium then end the loop
+            if self.actions == curr_actions:
+                equilibrium = True
+            # Otherwise set the current actions to be the selected actions and update the graph
+            else:
+                curr_actions = deepcopy(self.actions)
+                g = self.apply_actions_2_nx()
+                c += 1
+            # keeps track of a counter to ensure we don't spend too long attempting to reach equilibrium
+            if c >= 10000:
+                print("No equilibrium found: continuing with the program.")
+                break
+        # Find the rewards for each agent
+        for i in g.nodes:
+            neighbors_actions = [g.nodes[n]['action'] for n in g.neighbors(i)]
+            act = g.nodes[i]['action']
+            if game == 'majority':
+                # Reward is proportional to the number of agents playing the same action
+                try:
+                    self.rewards[i] = 1 / len([a for a in neighbors_actions if a != act])
+                except:
+                    self.rewards[i] = 1.
+            elif game == 'pgg':
+                # Max reward is when action is 0 otherwise is 1 - action/2 (arbitrary cost - could change later)
+                self.rewards[i] = 1. - (act / 2)
+        # Return the updated graph with actions and rewards
+        return self.apply_actions_2_nx()
 
     def copy(self):
         # Performs deepcopy of self

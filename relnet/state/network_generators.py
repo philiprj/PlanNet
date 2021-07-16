@@ -4,6 +4,7 @@ import math
 from abc import ABC, abstractmethod
 from pathlib import Path
 import networkx as nx
+import random
 from relnet.evaluation.file_paths import FilePaths
 from relnet.state.graph_state import S2VGraph
 from relnet.utils.config_utils import get_logger_instance
@@ -195,4 +196,11 @@ class BANetworkGenerator(OrdinaryGraphGenerator):
         # Gets parameters and creates the graph
         n, m = gen_params['n'], gen_params['m_ba']
         ba_graph = nx.generators.random_graphs.barabasi_albert_graph(n, m, seed=random_seed)
+
+        # Loop elements in the graph
+        for i in range(ba_graph.number_of_nodes()):
+            # Init the actions and agent rewards to zero
+            ba_graph.nodes[i]['action'] = random.randint(0, 1)
+            ba_graph.nodes[i]['reward'] = 0.
+
         return ba_graph
