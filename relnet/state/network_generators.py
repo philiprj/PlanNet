@@ -168,7 +168,7 @@ class GNMNetworkGenerator(OrdinaryGraphGenerator):
         # If we can have disconnections then simply generate the required networks
         if not self.enforce_connected:
             random_graph = nx.generators.random_graphs.gnm_random_graph(number_vertices, number_edges, seed=random_seed)
-            return random_graph
+            return random_action_init(random_graph)
         # Otherwise attempt to make graphs with no breaks, abort if break and try again
         else:
             for try_num in range(0, self.num_tries):
@@ -176,7 +176,7 @@ class GNMNetworkGenerator(OrdinaryGraphGenerator):
                                                                             number_edges,
                                                                             seed=(random_seed + (try_num * 1000)))
                 if nx.is_connected(random_graph):
-                    return random_graph
+                    return random_action_init(random_graph)
                 else:
                     continue
             raise ValueError("Maximum number of tries exceeded, giving up...")
@@ -196,11 +196,20 @@ class BANetworkGenerator(OrdinaryGraphGenerator):
         # Gets parameters and creates the graph
         n, m = gen_params['n'], gen_params['m_ba']
         ba_graph = nx.generators.random_graphs.barabasi_albert_graph(n, m, seed=random_seed)
-
-        # Loop elements in the graph
-        for i in range(ba_graph.number_of_nodes()):
-            # Init the actions and agent rewards to zero
-            ba_graph.nodes[i]['action'] = random.randint(0, 1)
-            ba_graph.nodes[i]['reward'] = 0.
-
+        # Init the actions and rewards and return
+        ba_graph = random_action_init(ba_graph)
         return ba_graph
+
+
+def random_action_init(g):
+    """
+    takes a graph and initialises the node actions to random in {0,1} and sets rewards = 0 for all nodes
+    :param g: NetworkX graph
+    :return: NetworkX graph with action and rewards attributes for all nodes
+    """
+    # Loop elements in the graph
+    for i in range(g.number_of_nodes()):
+        # Init the actions and agent rewards to zero
+        g.nodes[i]['action'] = random.randint(0, 1)
+        g.nodes[i]['reward'] = 0.
+    return g
