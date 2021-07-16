@@ -16,7 +16,6 @@ from pytorch_util import weights_init
 
 class MySpMM(torch.autograd.Function):
     """
-    TODO: What is the purpose of this class?
     Creates a custom autograd function
     """
     @staticmethod
@@ -76,8 +75,8 @@ class EmbedMeanField(nn.Module):
         """
         :param latent_dim: Number of hidden nodes
         :param output_dim: Output dimension of embedding
-        :param num_node_feats: Number of features present at each node
-        :param num_edge_feats: Number of features for each edge
+        :param num_node_feats: Num features at each node - tells us if edge selected, and action/reward values
+        :param num_edge_feats: Number of features for each edge - will be 0
         :param max_lv: Max number of message passage levels
         """
         super(EmbedMeanField, self).__init__()
@@ -165,7 +164,7 @@ class EmbedMeanField(nn.Module):
         cur_message_layer = input_potential
         # Loop while the level is less than max level
         while lv < self.max_lv:
-            # Pool the node features TODO: confirm this function
+            # Pool the node features
             n2npool = gnn_spmm(n2n_sp, cur_message_layer)
             # Hidden layer 2
             node_linear = self.conv_params(n2npool)

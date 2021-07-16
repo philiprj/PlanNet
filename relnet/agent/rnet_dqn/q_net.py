@@ -108,6 +108,7 @@ class QNet(GNNRegressor, nn.Module):
         # Initialises the weights
         weights_init(self)
         # Features per nodes for S2V - no feats for edges
+        # TODO: change this to include node attributes {action, reward}
         self.num_node_feats = 2
         self.num_edge_feats = 0
         # If no preset S2V module then define one
@@ -220,7 +221,6 @@ class QNet(GNNRegressor, nn.Module):
         prefix_sum = Variable(prefix_sum)
         # If no actions -
         if actions is None:
-            # TODO: what does this do?
             # Repeats the state embeddings for number of actions - e.g. number of nodes
             # Stack embeddings so we have one for each action available
             graph_embed = self.rep_global_embed(graph_embed, prefix_sum)
@@ -232,7 +232,6 @@ class QNet(GNNRegressor, nn.Module):
         embed_s_a = torch.cat((embed, graph_embed), dim=1)
         # Apply layers and relu activation
         embed_s_a = F.relu(self.linear_1(embed_s_a))
-        # TODO: Linear output goes to a single value - how does this get converted to an action?
         # Estimate the Q(s,a) for each available action - batches each available action together
         raw_pred = self.linear_out(embed_s_a)
         # If taking greedy actions then take raw prediction and pick actions
@@ -244,9 +243,7 @@ class QNet(GNNRegressor, nn.Module):
 
 class NStepQNet(nn.Module):
     """
-    TODO: What exactly is going on here?
-    Is num_steps = 2, with step 0 being  the first action and step 1 being the 2nd action? Passed to two networks?
-
+    Is num_steps = 2, with step 0 being the first action and step 1 being the 2nd action - passed to 2 networks
     Defines the N step Deep Q-Network
     """
     def __init__(self, hyperparams, num_steps):

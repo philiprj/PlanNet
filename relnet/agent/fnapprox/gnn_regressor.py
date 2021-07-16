@@ -21,7 +21,7 @@ class GNNRegressor(object):
         """
         Gets graph embedding
         :param batch_graph: Batch of graphs?
-        :param node_feat:  Node features
+        :param node_feat:  Node features - for selected node [0,1], and node action [{0,1}], reward [[0,1]]
         :param prefix_sum: Sum tells us where the new graph begins in list of nodes
         :return: embed, graph embed, prefix sum
         """
