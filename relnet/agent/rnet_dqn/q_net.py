@@ -107,9 +107,8 @@ class QNet(GNNRegressor, nn.Module):
         self.linear_out = nn.Linear(hyperparams['hidden'], 1)
         # Initialises the weights
         weights_init(self)
-        # Features per nodes for S2V - no feats for edges
-        # TODO: change this to include node attributes {action, reward}
-        self.num_node_feats = 2
+        # Features per nodes for S2V - no feats for edges - added features for actions and rewards
+        self.num_node_feats = 4
         self.num_edge_feats = 0
         # If no preset S2V module then define one
         if s2v_module is None:
@@ -170,8 +169,8 @@ class QNet(GNNRegressor, nn.Module):
 
     def prepare_node_features(self, batch_graph, picked_nodes):
         """
-        Gets tensor representation of node features
-        :param batch_graph: batch of many graphs
+        Gets tensor representation of node features - [1,0] if available for selection, [0,1] if already selected
+        :param batch_graph: graphs in tuple, sampling from buffer then is sample size tuple
         :param picked_nodes: The nodes we are preparing features for
         :return: Note feature tensor and prefix_sum?
         """
@@ -200,6 +199,21 @@ class QNet(GNNRegressor, nn.Module):
             # Set the 2nd feature to 1 and first to 0 for the picked nodes
             node_feat.numpy()[picked_ones, 1] = 1.0
             node_feat.numpy()[picked_ones, 0] = 0.0
+
+        # TODO: check this approach is working
+        # Loops through each graph in the tuple - keeping track of the batch value
+        for graph in batch_graph:
+            # counter for adding values to Array using graph size
+            cum_sum = 0
+            graph_size = graph.num_nodes
+            # Loop through nodes in the graph
+            for n in range(graph_size):
+                # Index into graph in array using cumulative sum, then index into the node position
+                # Set column 2 to actions and 3 to rewards
+                node_feat.numpy()[cum_sum + n, 2] = graph.actions[n]
+                node_feat.numpy()[cum_sum + n, 3] = graph.rewards[n]
+            cum_sum += graph_size
+
         # Return the features and running count of graph nodes in the batch
         return node_feat, torch.LongTensor(prefix_sum)
 

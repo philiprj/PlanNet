@@ -259,9 +259,7 @@ class GraphEdgeEnv(object):
         return act_list_t0, act_list_t1
 
     def get_max_graph_size(self):
-        """
-        :return: Largest graph size in datasets
-        """
+        # return: Largest graph size in datasets
         max_graph_size = np.max([g.num_nodes for g in self.g_list])
         return max_graph_size
 
@@ -293,49 +291,3 @@ class GraphEdgeEnv(object):
                 b_list.append(deepcopy(self.g_list[i].banned_actions))
             # Return the zip for the graphs
             return list(zip(cp_g_list, cp_first, b_list))
-
-    def find_nash(self, g_list):
-        """
-        Plays best response for each graph which it not in a terminal state - i.e. budget fully expended
-        :param g_list: List of each graph in training with the current actions of each player in graphs
-        :return: g_list - list with updated actions after players have converged to Nash after best response
-        """
-        # Loop the graphs and play best response
-        new_g_list = []
-        for g in g_list:
-            new_g = self.best_response(g)
-            new_g_list.append(new_g)
-        return new_g_list
-
-    @staticmethod
-    def best_response(g):
-        """
-
-        Roughly speaking this is correct but need to ensure the underlying data structures have correct methods
-
-        For a given graph plays best response for each player until converged to a Nash Equilibrium
-        :param g: graph state with current actions
-        :return: g after best response has converged to Nash
-        """
-        # Set bool for monitoring if an equilibrium has been reached
-        equilibrium = False
-        # Get the actions for each player
-        curr_actions = [node.action for node in g]
-        # Loop while not converged
-        while not equilibrium:
-            # Loop through each node and get new actions
-            actions = []
-            for node in g:
-                # Get the neighbors and neighbors actions
-                neighbors = node.get_neighbors()
-                neighbors_actions = [node.action for node in neighbors]
-                # Get the best response to the actions - need to change so only changes actions after all played 
-                # Changes internal state of the graph
-                action = node.act(neighbors_actions)
-                actions.append(action)
-            # If we have reached equilibrium then end the loop
-            if actions == curr_actions:
-                equilibrium = True
-        # Return the updated graph
-        return g
-
