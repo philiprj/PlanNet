@@ -12,7 +12,6 @@ class S2VGraph(object):
     # Takes a NetworkX graph and converts to a S2V object
     def __init__(self, g, game_type='majority'):
         """
-        # TODO: add game-type as input
         :param g: NetworkX graph
         """
         # Get the number of nodes, labels and set for quick comparison

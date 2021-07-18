@@ -7,9 +7,6 @@ from relnet.agent.rnet_dqn.rnet_dqn_agent import RNetDQNAgent
 from relnet.environment.graph_edge_env import GraphEdgeEnv
 from relnet.evaluation.file_paths import FilePaths
 
-# TODO: delete
-# from relnet.objective_functions.objective_functions import CriticalFractionTargeted, CriticalFractionRandom
-
 from relnet.state.network_generators import NetworkGenerator, BANetworkGenerator
 
 from relnet.objective_functions.social_welfare import SocialWelfare
