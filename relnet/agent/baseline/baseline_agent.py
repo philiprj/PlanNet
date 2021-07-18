@@ -41,7 +41,11 @@ class BaselineAgent(Agent, ABC):
     def pick_actions_using_strategy(self, t, i):
         pass
 
+
 class RandomAgent(BaselineAgent):
+    """
+    Selects actions randomly from the available actions.
+    """
     algorithm_name = 'random'
     is_deterministic = False
 
@@ -51,7 +55,11 @@ class RandomAgent(BaselineAgent):
     def pick_actions_using_strategy(self, t, i):
         return self.pick_random_actions(i)
 
+
 class GreedyAgent(BaselineAgent):
+    """
+    Selects the highest value action at all points - no exploration policy
+    """
     algorithm_name = 'greedy'
     is_deterministic = True
 
@@ -83,7 +91,11 @@ class GreedyAgent(BaselineAgent):
 
         return first_node, second_node
 
+
 class LowestToLowestDegreeAgent(BaselineAgent):
+    """
+    Adds edges between two lowest degree nodes
+    """
     algorithm_name = 'lowest_to_lowest'
     is_deterministic = True
 
@@ -112,13 +124,17 @@ class LowestToLowestDegreeAgent(BaselineAgent):
                 first_node, second_node = first, second
                 break
 
-        # failover strategy: if no such edge, pick a random edge.
+        # fail-over strategy: if no such edge, pick a random edge.
         if first_node is None and second_node is None:
             return self.pick_random_actions(i)
 
         return first_node, second_node
 
+
 class LowestToRandomDegreeAgent(BaselineAgent):
+    """
+    Adds edges between the lowest degree node and a random available node
+    """
     algorithm_name = 'lowest_to_random'
     is_deterministic = False
 
@@ -147,13 +163,17 @@ class LowestToRandomDegreeAgent(BaselineAgent):
                 second_node = self.local_random.choice(valid_choices)
                 break
 
-        # failover strategy: if no such edge, pick a random edge.
+        # fail-over strategy: if no such edge, pick a random edge.
         if first_node is None and second_node is None:
             return self.pick_random_actions(i)
 
         return first_node, second_node
 
+
 class LowestDegreeProductAgent(BaselineAgent):
+    """
+    Adds edges between two nodes with lowest product degree (rather than sum used before)
+    """
     algorithm_name = 'lowest_degree_product'
     is_deterministic = True
 
@@ -176,68 +196,3 @@ class LowestDegreeProductAgent(BaselineAgent):
         degrees = g.node_degrees
         degree_products = list(map(lambda pair: degrees[pair[0]] * degrees[pair[1]], non_edges))
         return degree_products
-
-class LowestBetweennessProductAgent(LowestDegreeProductAgent):
-    algorithm_name = 'lowest_betweenness_product'
-    is_deterministic = True
-
-    def get_local_feature_products(self, g, non_edges):
-        betweeness = nx.algorithms.centrality.betweenness_centrality(g.to_networkx())
-        degree_products = list(map(lambda pair: betweeness[pair[0]] * betweeness[pair[1]], non_edges))
-        return degree_products
-
-class FiedlerVectorAgent(BaselineAgent):
-    algorithm_name = 'fiedler_vector'
-    is_deterministic = True
-
-    def __init__(self, environment):
-        super().__init__(environment)
-
-
-    def pick_actions_using_strategy(self, t, i):
-        g = self.environment.g_list[i]
-        non_edges = list(self.environment.get_graph_non_edges(i))
-        if len(non_edges) == 0:
-            return (-1, -1)
-        elif len(non_edges) == 1:
-            return non_edges[0][0], non_edges[0][1]
-
-        A = g.get_adjacency_matrix()
-        L = get_laplacian(A)
-        fiedler_vector = compute_fiedler_vector(L)
-
-        abs_differences = list(map(lambda pair: abs(fiedler_vector[pair[0]] - fiedler_vector[pair[1]]), non_edges))
-        first_node, second_node = non_edges[np.argmax(abs_differences)]
-
-        return first_node, second_node
-
-class EffectiveResistanceAgent(BaselineAgent):
-    algorithm_name = 'effective_resistance'
-    is_deterministic = True
-
-    def __init__(self, environment):
-        super().__init__(environment)
-
-
-    def pick_actions_using_strategy(self, t, i):
-        g = self.environment.g_list[i]
-        non_edges = list(self.environment.get_graph_non_edges(i))
-        if len(non_edges) == 0:
-            return (-1, -1)
-        elif len(non_edges) == 1:
-            return non_edges[0][0], non_edges[0][1]
-
-        A = g.get_adjacency_matrix()
-        L = get_laplacian(A)
-
-        pinv = get_pseudoinverse(L)
-        def get_pairwise_effective_resistance(edge):
-            i, j = edge
-            return pinv[i,i] + pinv[j,j] - 2 * pinv[i,j]
-
-        pairwise_effective_resistances = list(map(get_pairwise_effective_resistance, non_edges))
-        first_node, second_node = non_edges[np.argmax(pairwise_effective_resistances)]
-
-        return first_node, second_node
-
-

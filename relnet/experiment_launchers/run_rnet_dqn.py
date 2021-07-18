@@ -43,10 +43,10 @@ def get_file_paths():
 
 if __name__ == '__main__':
     # Defines the number of training steps, and graphs for train/validation/test
-    num_training_steps = 100
-    num_train_graphs = 2
-    num_validation_graphs = 1
-    num_test_graphs = 1
+    num_training_steps = 200
+    num_train_graphs = 10
+    num_validation_graphs = 2
+    num_test_graphs = 2
     # Gets the training parameters and save paths
     gen_params = get_gen_params()
     file_paths = get_file_paths()
@@ -58,7 +58,8 @@ if __name__ == '__main__':
     # Generate graphs class using Barabasi–Albert
     gen = BANetworkGenerator(**kwargs)
     # Generate random seeds for create graphs
-    train_graph_seeds, validation_graph_seeds, test_graph_seeds = NetworkGenerator.construct_network_seeds(num_train_graphs, num_validation_graphs, num_test_graphs)
+    train_graph_seeds, validation_graph_seeds, test_graph_seeds = \
+        NetworkGenerator.construct_network_seeds(num_train_graphs, num_validation_graphs, num_test_graphs)
     # Creates our graphs
     train_graphs = gen.generate_many(gen_params, train_graph_seeds)
     validation_graphs = gen.generate_many(gen_params, validation_graph_seeds)
