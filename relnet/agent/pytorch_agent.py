@@ -99,7 +99,7 @@ class PyTorchAgent(Agent):
         if (step_number % self.validation_check_interval == 0) or (step_number == max_steps):
             # Get validation loss
             validation_loss = self.log_validation_loss(step_number, make_action_kwargs=make_action_kwargs)
-            # If logging then log the relevent info
+            # If logging then log the relevant info
             if self.log_progress:
                 self.logger.info(f"{model_tag if model_tag is not None else 'model'} validation loss:"
                                  f" {validation_loss: .4f} at step {step_number}.")
@@ -128,8 +128,10 @@ class PyTorchAgent(Agent):
                                 self.validation_initial_obj_values,
                                 validation=True,
                                 make_action_kwargs=make_action_kwargs)
+
         # Get the upper limit of the objective and calc the loss using the diff
-        max_improvement = self.environment.objective_function.upper_limit
+        max_improvement = 0.0
+
         validation_loss = max_improvement - performance
         # If logging - do logs
         if self.log_tf_summaries:

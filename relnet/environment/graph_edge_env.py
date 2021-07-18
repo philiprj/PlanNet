@@ -7,7 +7,6 @@ class GraphEdgeEnv(object):
     # Environment for the graph
     def __init__(self,
                  objective_function,
-                 objective_function_kwargs,
                  edge_budget_percentage):
         """
         Initialises the Graph Class
@@ -17,8 +16,6 @@ class GraphEdgeEnv(object):
         """
         # Init the parameters
         self.objective_function = objective_function
-        self.original_objective_function_kwargs = objective_function_kwargs
-        self.objective_function_kwargs = deepcopy(self.original_objective_function_kwargs)
         self.edge_budget_percentage = edge_budget_percentage
         # Number of steps in the MDP - step 1 selected from node - step 2 selected to node
         self.num_mdp_substeps = 2
@@ -52,8 +49,6 @@ class GraphEdgeEnv(object):
         # Define the objective function initial values for each graph
         self.objective_function_values = np.zeros((2, len(self.g_list)), dtype=np.float)
         self.objective_function_values[0, :] = initial_objective_function_values
-        # Copies the arguments
-        self.objective_function_kwargs = deepcopy(self.original_objective_function_kwargs)
         # Sets the rewards for each graph
         self.rewards = np.zeros(len(g_list), dtype=np.float)
         # If training then scale the objective values by the reward scales
@@ -70,7 +65,7 @@ class GraphEdgeEnv(object):
 
     def get_objective_function_value(self, s2v_graph):
         # Gets the objective_function values using the embedded graph
-        obj_function_value = self.objective_function.compute(s2v_graph, **self.objective_function_kwargs)
+        obj_function_value = self.objective_function(s2v_graph)
         return obj_function_value
 
     def get_objective_function_values(self, s2v_graphs):
@@ -177,23 +172,6 @@ class GraphEdgeEnv(object):
             new_g.populate_banned_actions(updated_budget)
             # Return updated graph and budget
             return new_g, updated_budget
-
-    @staticmethod
-    def apply_action_in_place(g, action, remaining_budget):
-        """
-        Similar to the apply action method but applied in place rather than on a copy
-        (is this not the same with the copy set to False?)
-        """
-        if g.first_node is None:
-            g.first_node = action
-            g.populate_banned_actions(remaining_budget)
-            return remaining_budget
-        else:
-            edge_cost = g.add_edge_dynamically(g.first_node, action)
-            g.first_node = None
-            updated_budget = remaining_budget - edge_cost
-            g.populate_banned_actions(updated_budget)
-            return updated_budget
 
     def step(self, actions):
         """

@@ -6,8 +6,13 @@ from relnet.agent.pytorch_agent import PyTorchAgent
 from relnet.agent.rnet_dqn.rnet_dqn_agent import RNetDQNAgent
 from relnet.environment.graph_edge_env import GraphEdgeEnv
 from relnet.evaluation.file_paths import FilePaths
-from relnet.objective_functions.objective_functions import CriticalFractionTargeted, CriticalFractionRandom
+
+# TODO: delete
+# from relnet.objective_functions.objective_functions import CriticalFractionTargeted, CriticalFractionRandom
+
 from relnet.state.network_generators import NetworkGenerator, BANetworkGenerator
+
+from relnet.objective_functions.social_welfare import SocialWelfare
 
 
 def get_gen_params():
@@ -47,6 +52,10 @@ if __name__ == '__main__':
     num_train_graphs = 10
     num_validation_graphs = 2
     num_test_graphs = 2
+
+    # Set the game to be played
+    game_type = 'pgg'
+
     # Gets the training parameters and save paths
     gen_params = get_gen_params()
     file_paths = get_file_paths()
@@ -54,9 +63,12 @@ if __name__ == '__main__':
     options = get_options(file_paths)
     storage_root = Path('/experiment_data/stored_graphs')
     original_dataset_dir = Path('/experiment_data/real_world_graphs/processed_data')
-    kwargs = {'store_graphs': False, 'graph_storage_root': storage_root}
+
+    # Setting the game type to play
+    kwargs = {'store_graphs': False, 'graph_storage_root': storage_root, 'game_type': game_type}
     # Generate graphs class using Barabasi–Albert
     gen = BANetworkGenerator(**kwargs)
+
     # Generate random seeds for create graphs
     train_graph_seeds, validation_graph_seeds, test_graph_seeds = \
         NetworkGenerator.construct_network_seeds(num_train_graphs, num_validation_graphs, num_test_graphs)
@@ -66,10 +78,10 @@ if __name__ == '__main__':
     test_graphs = gen.generate_many(gen_params, test_graph_seeds)
     # Edge percentage tells us how many changes we can make as a fraction of initial edges
     edge_percentage = 2.5
-    # Objective function parameters
-    obj_fun_kwargs = {"random_seed": 42, "num_mc_sims": gen_params['n'] * 2}
+
     # Creates the graph environment which the agent will work with
-    targ_env = GraphEdgeEnv(CriticalFractionRandom(), obj_fun_kwargs, edge_percentage)
+    targ_env = GraphEdgeEnv(SocialWelfare, edge_percentage)
+
     # Init the DQN agent and set it up with hyperparameters
     agent = RNetDQNAgent(targ_env)
     agent.setup(options, agent.get_default_hyperparameters())

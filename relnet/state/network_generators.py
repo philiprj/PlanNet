@@ -17,7 +17,7 @@ class NetworkGenerator(ABC):
     # Forces no unconnected elements
     enforce_connected = True
 
-    def __init__(self, store_graphs=False, graph_storage_root=None, logs_file=None):
+    def __init__(self, store_graphs=False, graph_storage_root=None, logs_file=None, game_type='majority'):
         """
         :param store_graphs: Bool - Stores the generated graph instances
         :param graph_storage_root: Path for storing the graphs
@@ -35,6 +35,9 @@ class NetworkGenerator(ABC):
             self.logger_instance = get_logger_instance(logs_file)
         else:
             self.logger_instance = None
+
+        # Set the game type
+        self.game_type = game_type
 
     def generate(self, gen_params, random_seed):
         """
@@ -142,7 +145,7 @@ class OrdinaryGraphGenerator(NetworkGenerator, ABC):
         :param instance: NetworkX graph instance
         :return: S2V object for easier manipulation with S2V
         """
-        state = S2VGraph(instance)
+        state = S2VGraph(instance, self.game_type)
         # Builds a list of banned actions for the graph for quick access
         state.populate_banned_actions()
         return state
@@ -150,7 +153,7 @@ class OrdinaryGraphGenerator(NetworkGenerator, ABC):
 
 class GNMNetworkGenerator(OrdinaryGraphGenerator):
     """
-    Creates a random network with a set nnumber of nodes and edges
+    Creates a random network with a set number of nodes and edges
     """
     name = 'random_network'
     num_tries = 10000

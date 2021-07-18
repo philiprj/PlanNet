@@ -10,7 +10,7 @@ budget_eps = 1e-5
 
 class S2VGraph(object):
     # Takes a NetworkX graph and converts to a S2V object
-    def __init__(self, g):
+    def __init__(self, g, game_type='majority'):
         """
         # TODO: add game-type as input
         :param g: NetworkX graph
@@ -34,12 +34,14 @@ class S2VGraph(object):
         # Init node to none
         self.first_node = None
 
+        # Init game type
+        self.game_type = game_type
         # Create a dict to store current actions and rewards
         self.actions = {}
         self.rewards = {}
         # Populate actions and find nash equilibrium
         self.get_actions_from_nx(g)
-        g = self.find_nash(game='majority')
+        g = self.find_nash(game=game_type)
 
     def add_edge(self, first_node, second_node):
         """
@@ -54,7 +56,7 @@ class S2VGraph(object):
         # Apply current actions to graph
         nx_graph = self.apply_actions_2_nx(nx_graph)
         # Convert back to S2V object and return
-        s2v_graph = S2VGraph(nx_graph)
+        s2v_graph = S2VGraph(nx_graph, game_type=self.game_type)
         return s2v_graph, 1
 
     def populate_banned_actions(self, budget=None):
