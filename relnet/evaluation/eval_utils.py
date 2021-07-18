@@ -48,9 +48,6 @@ def get_values_for_g_list(agent, g_list, initial_obj_values, validation, make_ac
         list_at = agent.make_actions(t, **action_kwargs)
         # print(f"at step {t} agent picked actions {list_at}")
 
-        if not validation:
-            agent.environment.objective_function_kwargs["random_seed"] += 1
-
         agent.environment.step(list_at)
         t += 1
     final_obj_values = agent.environment.get_final_values()

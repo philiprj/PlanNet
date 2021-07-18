@@ -6,9 +6,7 @@ from relnet.agent.pytorch_agent import PyTorchAgent
 from relnet.agent.rnet_dqn.rnet_dqn_agent import RNetDQNAgent
 from relnet.environment.graph_edge_env import GraphEdgeEnv
 from relnet.evaluation.file_paths import FilePaths
-
 from relnet.state.network_generators import NetworkGenerator, BANetworkGenerator
-
 from relnet.objective_functions.social_welfare import SocialWelfare
 
 
@@ -16,7 +14,7 @@ def get_gen_params():
     # Defines the network generation parameters
     gp = {}
     # Nodes
-    gp['n'] = 25
+    gp['n'] = 40
     gp['m_ba'] = 2
     # Number of edges compared to nodes
     gp['m_percentage_er'] = 20
@@ -45,10 +43,10 @@ def get_file_paths():
 
 if __name__ == '__main__':
     # Defines the number of training steps, and graphs for train/validation/test
-    num_training_steps = 200
-    num_train_graphs = 10
-    num_validation_graphs = 2
-    num_test_graphs = 2
+    num_training_steps = 1000
+    num_train_graphs = 100
+    num_validation_graphs = 20
+    num_test_graphs = 20
 
     # Set the game to be played
     game_type = 'pgg'
