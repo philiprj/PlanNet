@@ -6,7 +6,8 @@ from relnet.agent.pytorch_agent import PyTorchAgent
 from relnet.agent.rnet_dqn.rnet_dqn_agent import RNetDQNAgent
 from relnet.environment.graph_edge_env import GraphEdgeEnv
 from relnet.evaluation.file_paths import FilePaths
-from relnet.state.network_generators import NetworkGenerator, BANetworkGenerator
+from relnet.state.network_generators import NetworkGenerator, BANetworkGenerator, WSNetworkGenerator, \
+    GNMNetworkGenerator
 from relnet.objective_functions.social_welfare import SocialWelfare
 
 
@@ -15,7 +16,9 @@ def get_gen_params():
     gp = {}
     # Nodes
     gp['n'] = 20
+    # Parameters for Barabasi-Albert Graph
     gp['m_ba'] = 2
+    # Parameters for Watts-Strogatz Graph
     gp['k_ws'], gp['p_ws'] = 2, 0.1
     # Number of edges compared to nodes
     gp['m_percentage_er'] = 20
@@ -50,7 +53,7 @@ if __name__ == '__main__':
     num_test_graphs = 5
 
     # Set the game to be played
-    game_type = 'bspgg'
+    game_type = 'majority' # ['majority', 'bspgg', 'pgg']
 
     # Gets the training parameters and save paths
     gen_params = get_gen_params()
@@ -64,6 +67,8 @@ if __name__ == '__main__':
     kwargs = {'store_graphs': False, 'graph_storage_root': storage_root, 'game_type': game_type}
     # Generate graphs class using Barabasi–Albert
     gen = BANetworkGenerator(**kwargs)
+    # gen = WSNetworkGenerator(**kwargs)
+    # gen = GNMNetworkGenerator(**kwargs)
 
     # Generate random seeds for create graphs
     train_graph_seeds, validation_graph_seeds, test_graph_seeds = \

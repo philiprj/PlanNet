@@ -191,7 +191,7 @@ class BANetworkGenerator(OrdinaryGraphGenerator):
 
     def generate_instance(self, gen_params, random_seed):
         """
-        Creates Barabasi Albert Graph
+        Creates Barabasi-Albert Graph
         :param gen_params: Parameters for creating the graph in a dict
         :param random_seed: Integer value for random_seed to deterministically create graphs
         :return: NetworkX graph using Barabasi Albert structure
