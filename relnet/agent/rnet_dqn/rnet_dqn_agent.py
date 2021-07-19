@@ -152,7 +152,8 @@ class RNetDQNAgent(PyTorchAgent):
         self.learning_rate = self.hyperparams['learning_rate']
         self.eps_start = self.hyperparams['epsilon_start']
         # Sets the epsilon decay rate and final value - and burn in steps with no decay
-        eps_step_denominator = self.hyperparams['eps_step_denominator'] if 'eps_step_denominator' in self.hyperparams else 2
+        eps_step_denominator = \
+            self.hyperparams['eps_step_denominator'] if 'eps_step_denominator' in self.hyperparams else 2
         self.eps_step = max_steps / eps_step_denominator
         self.eps_end = 0.1
         self.burn_in = 50
@@ -188,7 +189,8 @@ class RNetDQNAgent(PyTorchAgent):
                 # If random value less than epsilon then select exploration action
                 if self.local_random.random() < self.eps:
                     # Selects and returns current and next exploratory actions
-                    exploration_actions_t0, exploration_actions_t1 = self.environment.exploratory_actions(self.agent_exploration_policy)
+                    exploration_actions_t0, exploration_actions_t1 = \
+                        self.environment.exploratory_actions(self.agent_exploration_policy)
                     self.next_exploration_actions = exploration_actions_t1
                     return exploration_actions_t0
                 # Otherwise return the greedy actions
@@ -271,7 +273,8 @@ class RNetDQNAgent(PyTorchAgent):
                 final_acts[g_list_index] = list_at[g_list_index]
             # If more than one state is non terminal then add to the memory pool
             if len(nonterm_at) > 0:
-                self.mem_pool.add_list(nonterm_st, nonterm_at, rewards, nonterm_s_prime, [False] * len(nonterm_at), t % 2)
+                self.mem_pool.add_list(nonterm_st, nonterm_at, rewards,
+                                       nonterm_s_prime, [False] * len(nonterm_at), t % 2)
             # Increment the time step
             t += 1
         # List the final actions, next states, and get the environment rewards

@@ -91,7 +91,7 @@ class PyTorchAgent(Agent):
         Checks if current model has better validation loss and saves if required
         :param step_number: The training step number (why this and not self.step?)
         :param max_steps: Make check if on last step
-        :param make_action_kwargs: key word arguments for getting validtion
+        :param make_action_kwargs: key word arguments for getting validation
         :param model_tag: Tag for model name
         :param save_model_if_better: Bool to save better models if true
         """
@@ -105,7 +105,7 @@ class PyTorchAgent(Agent):
                                  f" {validation_loss: .4f} at step {step_number}.")
             # If loss if significantly better then log and save
             if (self.best_validation_loss - validation_loss) > self.validation_change_threshold:
-                # If logging then log the relevent info then save stats
+                # If logging then log the relevant info then save stats
                 if self.log_progress:
                     self.logger.info(f"rejoice! found a better validation loss at step {step_number}.")
                 self.best_validation_changed_step = step_number
@@ -129,9 +129,9 @@ class PyTorchAgent(Agent):
                                 validation=True,
                                 make_action_kwargs=make_action_kwargs)
 
-        # Get the upper limit of the objective and calc the loss using the diff
-        max_improvement = 0.0
-
+        # Upper limit of the objective improvement - will normalise rewards so max reward sums to 1.
+        # Thus max improvement is from 0 to 1
+        max_improvement = 1.0
         validation_loss = max_improvement - performance
         # If logging - do logs
         if self.log_tf_summaries:
@@ -139,8 +139,7 @@ class PyTorchAgent(Agent):
             from tensorflow import Summary
             # Uses tensorflow to write a summary - do we need this?
             validation_summary = Summary(value=[
-                Summary.Value(tag="validation_loss", simple_value=validation_loss)
-            ])
+                Summary.Value(tag="validation_loss", simple_value=validation_loss)])
             # I think this is a tensorbaord feature
             self.file_writer.add_summary(validation_summary, step)
             # Tries to write tensorboard info to disk
@@ -199,7 +198,7 @@ class PyTorchAgent(Agent):
         :param hyperparams: Doesn't seem to be uses here?
         """
         super().setup(options, hyperparams)
-        # Sets batch size for sampling from experiance replay
+        # Sets batch size for sampling from experience replay
         if 'batch_size' in options:
             self.batch_size = options['batch_size']
         else:
@@ -209,7 +208,7 @@ class PyTorchAgent(Agent):
             self.validation_check_interval = options['validation_check_interval']
         else:
             self.validation_check_interval = 100
-        # Sets max steps with no improval
+        # Sets max steps with no improve
         if 'max_validation_consecutive_steps' in options:
             self.max_validation_consecutive_steps = options['max_validation_consecutive_steps']
         else:
@@ -266,7 +265,8 @@ class PyTorchAgent(Agent):
         # Sets the path
         self.eval_histories_path = self.models_path / FilePaths.EVAL_HISTORIES_DIR_NAME
         # Sets the file name
-        model_history_filename = self.eval_histories_path / FilePaths.construct_history_file_name(self.model_identifier_prefix)
+        model_history_filename = \
+            self.eval_histories_path / FilePaths.construct_history_file_name(self.model_identifier_prefix)
         # Uses pathlib to make the path to the file
         model_history_file = Path(model_history_filename)
         # Organises the file and unlinks it from path if required

@@ -1,6 +1,7 @@
 import math
 from copy import deepcopy
 import networkx as nx
+import random
 import numpy as np
 import xxhash
 import warnings
@@ -38,6 +39,10 @@ class S2VGraph(object):
         # Create a dict to store current actions and rewards
         self.actions = {}
         self.rewards = {}
+        # Get max rewards - e.g all players get reward of 1.
+        self.max_reward = g.number_of_nodes()
+        # Set the cost for contributing to the public good - [0, 1]
+        self.contribution_cost = 0.2
         # Populate actions and find nash equilibrium
         self.get_actions_from_nx(g)
         g = self.find_nash(game=game_type)
@@ -179,7 +184,7 @@ class S2VGraph(object):
         :param game: Game we are playing - currently implemented {majority, pgg}
         :return: NetworkX graph in equilibrium state
         """
-        assert game in ['majority', 'pgg']
+        assert game in ['majority', 'bspgg']
         # Convert to NetworkX
         g = self.apply_actions_2_nx()
         # Set bool for monitoring if an equilibrium has been reached
@@ -189,19 +194,27 @@ class S2VGraph(object):
         # Loop while not converged
         c = 0
         while not equilibrium:
-            # Loop through each node and get new actions
-            for i in g.nodes:
+            # Loop through each node and get new actions - in random order each loop
+            node_list = list(range(self.num_nodes))
+            random.shuffle(node_list)
+            for i in node_list:
+            # for i in g.nodes:
                 # Get the neighbors actions
                 neighbors_actions = [g.nodes[n]['action'] for n in g.neighbors(i)]
                 # Select the action based on the game being played
                 if game == 'majority':
                     # If more are playing 1 then pick 1, Otherwise pick 0
-                    if len([a for a in neighbors_actions if a == 1]) >= len([a for a in neighbors_actions if a == 0]):
+                    if len([a for a in neighbors_actions if a == 1]) > len([a for a in neighbors_actions if a == 0]):
                         # Updates the S2V state and NX graph
                         self.actions[i], g.nodes[i]['action'] = 1., 1.
-                    else:
+                    # If less then select less
+                    elif len([a for a in neighbors_actions if a == 1]) < len([a for a in neighbors_actions if a == 0]):
                         self.actions[i], g.nodes[i]['action'] = 0., 0.
-                elif game == 'pgg':
+                    # If equal then random tie breaker
+                    else:
+                        self.actions[i] = random.randint(0,1)
+                        g.nodes[i]['action'] = deepcopy(self.actions[i])
+                elif game == 'bspgg':
                     # If any neighboring agents are contributing then chose to defect
                     if 1 in neighbors_actions:
                         self.actions[i], g.nodes[i]['action'] = 0., 0.
@@ -226,12 +239,15 @@ class S2VGraph(object):
             if game == 'majority':
                 # Reward is proportional to the number of agents playing the same action
                 try:
-                    self.rewards[i] = 1 / len([a for a in neighbors_actions if a != act])
+                    self.rewards[i] = (1 / len([a for a in neighbors_actions if a != act])) / self.max_reward
                 except:
-                    self.rewards[i] = 1.
-            elif game == 'pgg':
+                    self.rewards[i] = 1. / self.max_reward
+            elif game == 'bspgg':
                 # Max reward is when action is 0 otherwise is 1 - action/2 (arbitrary cost - could change later)
-                self.rewards[i] = 1. - (act / 2)
+                if act == 1.:
+                    self.rewards[i] = (1. - self.contribution_cost) / self.max_reward
+                else:
+                    self.rewards[i] = 1. / self.max_reward
         # Return the updated graph with actions and rewards
         return self.apply_actions_2_nx()
 

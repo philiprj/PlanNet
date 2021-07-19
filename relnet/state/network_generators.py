@@ -204,6 +204,26 @@ class BANetworkGenerator(OrdinaryGraphGenerator):
         return ba_graph
 
 
+class WSNetworkGenerator(OrdinaryGraphGenerator):
+    # Name of approach
+    name = 'watts_strogatz'
+
+    def generate_instance(self, gen_params, random_seed):
+        """
+        Creates Watts Strogatz Graph
+        :param gen_params: Parameters for creating the graph in a dict
+        :param random_seed: Integer value for random_seed to deterministically create graphs
+        :return: NetworkX graph using  Watts Strogatz structure - captures small-world property found in many social
+        and biological networks, which generates networks with high clustering coefficient
+        """
+        # Gets parameters and creates the graph
+        n, k, p = gen_params['n'], gen_params['k_ws'], gen_params['p_ws']
+        ws_graph = nx.generators.random_graphs.connected_watts_strogatz_graph(n, k, p, seed=random_seed)
+        # Init the actions and rewards and return
+        ws_graph = random_action_init(ws_graph)
+        return ws_graph
+
+
 def random_action_init(g):
     """
     takes a graph and initialises the node actions to random in {0,1} and sets rewards = 0 for all nodes

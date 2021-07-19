@@ -53,7 +53,8 @@ class GraphEdgeEnv(object):
         self.rewards = np.zeros(len(g_list), dtype=np.float)
         # If training then scale the objective values by the reward scales
         if self.training:
-            self.objective_function_values[0, :] = np.multiply(self.objective_function_values[0, :], self.reward_scale_multiplier)
+            self.objective_function_values[0, :] = \
+                np.multiply(self.objective_function_values[0, :], self.reward_scale_multiplier)
 
     def pass_logger_instance(self, logger):
         # Sets current log
