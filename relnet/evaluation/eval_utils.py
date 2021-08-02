@@ -32,7 +32,6 @@ def generate_search_space(parameter_grid,
 def get_values_for_g_list(agent, g_list, initial_obj_values, validation, make_action_kwargs):
     """
     Runs the action selection until terminal state and gets objective function values.
-    :return:
     """
     if initial_obj_values is None:
         obj_values = agent.environment.get_objective_function_values(g_list)
@@ -46,9 +45,9 @@ def get_values_for_g_list(agent, g_list, initial_obj_values, validation, make_ac
 
         action_kwargs = (make_action_kwargs or {})
         list_at = agent.make_actions(t, **action_kwargs)
-        # print(f"at step {t} agent picked actions {list_at}")
+        list_a_types = [g.action_type for g in g_list]
 
-        agent.environment.step(list_at)
+        agent.environment.step(list_at, list_a_types)
         t += 1
     final_obj_values = agent.environment.get_final_values()
     return obj_values, final_obj_values
@@ -76,7 +75,9 @@ def record_episode_histories(agent, g_list):
         actions.append(list_at)
         rewards.append([0] * len(list_at))
 
-        agent.environment.step(list_at)
+        _, _, _, a_types = zip(*list_st)
+
+        agent.environment.step(list_at, a_types)
         t += 1
 
     final_states = deepcopy(agent.environment.g_list)

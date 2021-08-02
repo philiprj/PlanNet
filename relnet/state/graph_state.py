@@ -5,13 +5,28 @@ import random
 import numpy as np
 import xxhash
 import warnings
+from relnet.objective_functions.social_welfare import SocialWelfare
 # Budget for making changes to the graph
 budget_eps = 1e-5
 
 
+def random_action_init(g):
+    """
+    takes a graph and initialises the node actions to random in {0,1} and sets rewards = 0 for all nodes
+    :param g: NetworkX graph
+    :return: NetworkX graph with action and rewards attributes for all nodes
+    """
+    # Loop elements in the graph
+    for i in range(g.number_of_nodes()):
+        # Init the actions and agent rewards to zero
+        g.nodes[i]['action'] = random.randint(0, 1)
+        g.nodes[i]['reward'] = 0.
+    return g
+
+
 class S2VGraph(object):
     # Takes a NetworkX graph and converts to a S2V object
-    def __init__(self, g, game_type='majority'):
+    def __init__(self, g, game_type='majority', br_order=None, enforce_connected=True):
         """
         :param g: NetworkX graph
         """
@@ -34,21 +49,31 @@ class S2VGraph(object):
         # Init node to none
         self.first_node = None
 
+        # Set bool for enforcing a connected graph when removing edges
+        self.enforce_connected = enforce_connected
         # Init game type
         assert game_type in ['majority', 'bspgg', 'pgg']
         self.game_type = game_type
+        # Set actions type {'add', 'remove', 'flip', None} - will be None given S2V only called after applying action
+        self.action_type = None
         # Create a dict to store current actions and rewards
         self.actions = {}
         self.rewards = {}
         # Get max rewards - e.g all players get reward of 1.
         self.max_reward = g.number_of_nodes()
         # Set the cost for contributing to the public good - [0, 1] - here homogeneous but we could add variation
-        self.cost = [0.2 * 1. for _ in range(self.num_nodes)]
+        self.cost = [0.7 * 1. for _ in range(self.num_nodes)]
         self.contribution_cost = dict(zip(self.node_labels, self.cost))
         # Set reward scalar for Public Goods Game
-        self.reward_scale = 5.
+        self.reward_scale = 4.
         if game_type == 'pgg':
             self.max_reward = self.max_reward * self.reward_scale
+        # Set the order for agents
+        if br_order is None:
+            self.br_order = list(range(self.num_nodes))
+            random.shuffle(self.br_order)
+        else:
+            self.br_order = br_order
 
         # Populate actions and find nash equilibrium
         self.get_actions_from_nx(g)
@@ -68,22 +93,48 @@ class S2VGraph(object):
         # Apply current actions to graph
         nx_graph = self.apply_actions_2_nx(nx_graph)
         # Convert back to S2V object and return
-        s2v_graph = S2VGraph(nx_graph, game_type=self.game_type)
+        s2v_graph = S2VGraph(nx_graph,
+                             game_type=self.game_type,
+                             br_order=self.br_order,
+                             enforce_connected=self.enforce_connected)
         return s2v_graph, 1
 
-    def populate_banned_actions(self, budget=None):
+    def populate_banned_actions(self, budget=None, action=None):
+        """
+        Populates a set of banned actions, either due to budget or unavailable nodes
+        :param budget: budget for making change
+        :param action: {'add', 'remove', 'flip'}
+        """
+        assert action in ['add', 'remove', 'flip', None]
+        self.action_type = action
         # If a budget is given and the current budget is less than minimum budget then set all actions to banned
         if budget is not None:
             if budget < budget_eps:
                 self.banned_actions = self.all_nodes_set
                 return
+        if action is None:
+            self.banned_actions = set()
+            return
         # otherwise, if no first node selected
         if self.first_node is None:
             # Get unavailable first nodes
-            self.banned_actions = self.get_invalid_first_nodes(budget)
+            if action == 'add':
+                self.banned_actions = self.get_invalid_first_nodes(budget)
+            elif action == 'remove':
+                self.banned_actions = self.invalid_first_node_removal(budget)
+            # If flip then empty set
+            elif action == 'flip':
+                self.banned_actions = set()
         # If a first node is selected then get unavailable end nodes
         else:
-            self.banned_actions = self.get_invalid_edge_ends(self.first_node, budget)
+            # Get unavailable first nodes
+            if action == 'add':
+                self.banned_actions = self.get_invalid_edge_ends(self.first_node, budget)
+            elif action == 'remove':
+                self.banned_actions = self.invalid_edge_ends_removal(self.first_node, budget)
+            # If flip then add the first node to the set
+            elif action == 'flip':
+                self.banned_actions = set([self.first_node])
 
     def get_invalid_first_nodes(self, budget=None):
         """
@@ -111,10 +162,90 @@ class S2VGraph(object):
         # return the complete set
         return results
 
+    def remove_edge(self, first_node, second_node):
+        """
+        Removes an edge between two specified nodes.
+        :param first_node: Start node
+        :param second_node: end node
+        :return: S2V graph object with added edge
+        """
+        # Convert to NetworkX for change - then add edge using inbuilt function
+        nx_graph = self.to_networkx()
+        nx_graph.remove_edge(first_node, second_node)
+        # Apply current actions to graph
+        nx_graph = self.apply_actions_2_nx(nx_graph)
+        # Convert back to S2V object and return
+        s2v_graph = S2VGraph(nx_graph,
+                             game_type=self.game_type,
+                             br_order=self.br_order,
+                             enforce_connected=self.enforce_connected)
+        return s2v_graph, 1
+
+    def flip_node(self, first_node, second_node=None):
+        """
+        Flips the actions of a given node
+        :param first_node: Start node
+        :param second_node: Optional to change two nodes in 1 move
+        :return: S2V graph object with flipped action/s
+        """
+        # Converts to NetworkX for change
+        nx_graph = self.to_networkx()
+        nx_graph = self.apply_actions_2_nx(nx_graph)
+        # Flip the binary action - if 1 -> 0, if 0 -> abs(-1) = 1
+        nx_graph.nodes[first_node]['action'] = abs(nx_graph.nodes[first_node]['action'] - 1)
+        if second_node is not None:
+            nx_graph.nodes[second_node]['action'] = abs(nx_graph.nodes[second_node]['action'] - 1)
+        s2v_graph = S2VGraph(nx_graph,
+                             game_type=self.game_type,
+                             br_order=self.br_order,
+                             enforce_connected=self.enforce_connected,)
+        return s2v_graph, 1
+
+    def invalid_first_node_removal(self, budget):
+        """
+        Node is invalid for removal if removing it would disconnect the graph
+        :return: set of invalid nodes with only one edge
+        """
+        # If we are enforcing connection then remove nodes with only one edge, or connected to nodes with 1 edge
+        if self.enforce_connected:
+            invalid = set([node_id for node_id in self.node_labels if self.node_degrees[node_id] == 1])
+            valid = self.all_nodes_set - invalid
+            # Update list to include ids with no valid end nodes
+            invalid.update([node_id for node_id in valid if len(self.invalid_edge_ends_removal(node_id)) == self.num_nodes])
+        # Otherwise just add elements with no edge
+        else:
+            invalid = set([node_id for node_id in self.node_labels if self.node_degrees[node_id] == 0])
+        return invalid
+
+    def invalid_edge_ends_removal(self, query_node, budget=None):
+        """
+        :param query_node: first node selected to remove edge from
+        :param budget: Unused
+        :return: Set of invalid nodes to connect the first node to
+        """
+        # Create set of invalid nodes and add current 1st node to it
+        results = set()
+        # Reshape node list into array
+        existing_edges = self.edge_pairs.reshape(-1, 2)
+        # Add the connected nodes to the set of available nodes
+        existing_left = existing_edges[existing_edges[:, 0] == query_node]
+        results.update(np.ravel(existing_left[:, 1]))
+        existing_right = existing_edges[existing_edges[:, 1] == query_node]
+        results.update(np.ravel(existing_right[:, 0]))
+        results = self.all_nodes_set - results
+        results.add(query_node)
+
+        if self.enforce_connected:
+            # Don't remove node if would disconnect from the graph
+            results.update([node_id for node_id in self.node_labels if self.node_degrees[node_id] == 1])
+        return results
+
     def to_networkx(self):
         # Takes the stores edges and makes the NetworkX graph from the edges
         edges = self.convert_edges()
         g = nx.Graph()
+        # Add nodes then add edges
+        g.add_nodes_from(self.node_labels)
         g.add_edges_from(edges)
         return g
 
@@ -136,7 +267,17 @@ class S2VGraph(object):
             nx_graph = self.to_networkx()
             nx.draw(nx_graph, pos=node_positions, with_labels=True, ax=ax)
 
-    def draw_to_file(self, filename):
+    def display_with_actions(self, ax=None):
+        # Draws the graphs with actions from the S2V object using NetworkX
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            nx_graph = self.to_networkx()
+            nx_graph = self.apply_actions_2_nx(nx_graph)
+            label_dict = deepcopy(self.actions)
+            # nx.draw_shell(nx_graph, labels=label_dict, with_labels=True, ax=ax, font_weight='bold')
+            nx.draw(nx_graph, labels=label_dict, with_labels=True, ax=ax, font_weight='bold')
+
+    def draw_to_file(self, filename, display_actions=True):
         # Draws and saves to file
         import matplotlib
         matplotlib.use("Agg")
@@ -146,7 +287,11 @@ class S2VGraph(object):
         figsize = (fig_size_length, fig_size_length)
         fig = plt.figure(figsize=figsize)
         ax = fig.add_subplot(111)
-        self.display(ax=ax)
+        ax.set_title("Social Welfare: {}".format(SocialWelfare(self)))
+        if display_actions:
+            self.display_with_actions(ax=ax)
+        else:
+            self.display(ax=ax)
         fig.savefig(filename)
         plt.close()
 
@@ -172,7 +317,6 @@ class S2VGraph(object):
             # Set the actions and rewards from the dict of node labels
             g.nodes[i]['action'] = self.actions[i]
             g.nodes[i]['reward'] = self.rewards[i]
-
         return g
 
     def get_actions_from_nx(self, g):
@@ -198,7 +342,11 @@ class S2VGraph(object):
             # Majority game
             if self.game_type == 'majority':
                 # Reward is proportional to the number of agents playing the same action
-                self.rewards[i] = len([a for a in neighbors_actions if a == act]) / len([a for a in neighbors_actions])
+                try:
+                    self.rewards[i] = \
+                        len([a for a in neighbors_actions if a == act]) / len([a for a in neighbors_actions])
+                except ZeroDivisionError:
+                    self.rewards[i] = 0.0
             # Best shot public goods game
             elif self.game_type == 'bspgg':
                 # Max reward is when action is 0 otherwise is 1 - action/2 (arbitrary cost - could change later)
@@ -230,10 +378,8 @@ class S2VGraph(object):
         # Loop while not converged
         c = 0
         while not equilibrium:
-            # Loop through each node and get new actions - in random order each loop
-            node_list = list(range(self.num_nodes))
-            random.shuffle(node_list)
-            for i in node_list:
+            # Loop through each node and get new actions
+            for i in self.br_order:
                 # Get the neighbors actions
                 neighbors_actions = [g.nodes[n]['action'] for n in g.neighbors(i)]
                 # Get the proportion of contributors and defectors
@@ -252,7 +398,7 @@ class S2VGraph(object):
                         self.actions[i], g.nodes[i]['action'] = 0., 0.
                     # If equal then random tie breaker
                     else:
-                        self.actions[i] = random.randint(0,1)
+                        self.actions[i] = random.randint(0, 1)
                         g.nodes[i]['action'] = deepcopy(self.actions[i])
                 elif self.game_type == 'bspgg':
                     # If any neighboring agents are contributing then chose to defect
@@ -277,7 +423,7 @@ class S2VGraph(object):
             # Otherwise set the current actions to be the selected actions and update the graph
             else:
                 curr_actions = deepcopy(self.actions)
-                g = self.apply_actions_2_nx()
+                # g = self.apply_actions_2_nx()
                 c += 1
             # keeps track of a counter to ensure we don't spend too long attempting to reach equilibrium
             if c >= 10000:
@@ -285,9 +431,18 @@ class S2VGraph(object):
                 break
         # Update the rewards before returning
         self.update_rewards(g)
-
         # Return the updated graph with actions and rewards
         return self.apply_actions_2_nx()
+
+    def randomise_actions(self):
+        # Takes the graph structure and applies random actions again - initialising a new S2V state object
+        nx_graph = self.to_networkx()
+        nx_graph = random_action_init(nx_graph)
+        s2v_graph = S2VGraph(nx_graph,
+                             game_type=self.game_type,
+                             br_order=self.br_order,
+                             enforce_connected=self.enforce_connected)
+        return s2v_graph
 
     def copy(self):
         # Performs deepcopy of self
@@ -299,7 +454,7 @@ class S2VGraph(object):
         return f"Graph State with hash {gh}"
 
 
-def get_graph_hash(g, size=32, include_first=False):
+def get_graph_hash(g, size=32, include_first=False, include_actions=True):
     """
     Get a hash code for the graph
     :param g: Graph
@@ -323,6 +478,8 @@ def get_graph_hash(g, size=32, include_first=False):
             hash_instance.update(np.zeros(g.num_nodes))
     # Update with edge pairs
     hash_instance.update(g.edge_pairs)
+    if include_actions:
+        hash_instance.update(np.array([g.actions.values]))
     # Returns a hash integer value based on input values
     graph_hash = hash_instance.intdigest()
     return graph_hash

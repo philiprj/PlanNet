@@ -4,9 +4,8 @@ import math
 from abc import ABC, abstractmethod
 from pathlib import Path
 import networkx as nx
-import random
 from relnet.evaluation.file_paths import FilePaths
-from relnet.state.graph_state import S2VGraph
+from relnet.state.graph_state import S2VGraph, random_action_init
 from relnet.utils.config_utils import get_logger_instance
 
 
@@ -17,7 +16,11 @@ class NetworkGenerator(ABC):
     # Forces no unconnected elements
     enforce_connected = True
 
-    def __init__(self, store_graphs=False, graph_storage_root=None, logs_file=None, game_type='majority'):
+    def __init__(self, store_graphs=False,
+                 graph_storage_root=None,
+                 logs_file=None,
+                 game_type='majority',
+                 enforce_connected=True):
         """
         :param store_graphs: Bool - Stores the generated graph instances
         :param graph_storage_root: Path for storing the graphs
@@ -28,7 +31,7 @@ class NetworkGenerator(ABC):
         self.store_graphs = store_graphs
         if self.store_graphs:
             self.graph_storage_root = graph_storage_root
-            self.graph_storage_dir = graph_storage_root / self.name
+            self.graph_storage_dir = graph_storage_root / game_type / self.name
             self.graph_storage_dir.mkdir(parents=True, exist_ok=True)
         # Log file
         if logs_file is not None:
@@ -38,6 +41,7 @@ class NetworkGenerator(ABC):
 
         # Set the game type
         self.game_type = game_type
+        self.enforce_connected = enforce_connected
 
     def generate(self, gen_params, random_seed):
         """
@@ -93,6 +97,7 @@ class NetworkGenerator(ABC):
         G = nx.Graph()
         G.add_nodes_from(sorted(instance.nodes(data=True)))
         G.add_edges_from(instance.edges(data=True))
+        G = random_action_init(G)
         return G
 
     def generate_many(self, gen_params, random_seeds):
@@ -111,6 +116,7 @@ class NetworkGenerator(ABC):
     def get_data_filename(gen_params, random_seed):
         # Creates a file name from the parameters used
         n = gen_params['n']
+
         filename = f"{n}-{random_seed}.graphml"
         return filename
 
@@ -145,7 +151,9 @@ class OrdinaryGraphGenerator(NetworkGenerator, ABC):
         :param instance: NetworkX graph instance
         :return: S2V object for easier manipulation with S2V
         """
-        state = S2VGraph(instance, self.game_type)
+        state = S2VGraph(instance,
+                         self.game_type,
+                         enforce_connected=self.enforce_connected)
         # Builds a list of banned actions for the graph for quick access
         state.populate_banned_actions()
         return state
@@ -203,6 +211,20 @@ class BANetworkGenerator(OrdinaryGraphGenerator):
         ba_graph = random_action_init(ba_graph)
         return ba_graph
 
+    @staticmethod
+    def get_data_filename(gen_params, random_seed):
+        # Creates a file name from the parameters used
+        n, m = gen_params['n'], gen_params['m_ba']
+        filename = f"{n}-{m}-{random_seed}.graphml"
+        return filename
+
+    @staticmethod
+    def get_drawing_filename(gen_params, random_seed):
+        # Creates a drawing file name from the parameters used
+        n, m = gen_params['n'], gen_params['m_ba']
+        filename = f"{n}-{m}-{random_seed}.png"
+        return filename
+
 
 class WSNetworkGenerator(OrdinaryGraphGenerator):
     # Name of approach
@@ -223,16 +245,16 @@ class WSNetworkGenerator(OrdinaryGraphGenerator):
         ws_graph = random_action_init(ws_graph)
         return ws_graph
 
+    @staticmethod
+    def get_data_filename(gen_params, random_seed):
+        # Creates a file name from the parameters used
+        n, k, p = gen_params['n'], gen_params['k_ws'], gen_params['p_ws']
+        filename = f"{n}-{k}-{p}-{random_seed}.graphml"
+        return filename
 
-def random_action_init(g):
-    """
-    takes a graph and initialises the node actions to random in {0,1} and sets rewards = 0 for all nodes
-    :param g: NetworkX graph
-    :return: NetworkX graph with action and rewards attributes for all nodes
-    """
-    # Loop elements in the graph
-    for i in range(g.number_of_nodes()):
-        # Init the actions and agent rewards to zero
-        g.nodes[i]['action'] = random.randint(0, 1)
-        g.nodes[i]['reward'] = 0.
-    return g
+    @staticmethod
+    def get_drawing_filename(gen_params, random_seed):
+        # Creates a drawing file name from the parameters used
+        n, k, p = gen_params['n'], gen_params['k_ws'], gen_params['p_ws']
+        filename = f"{n}-{k}-{p}-{random_seed}.png"
+        return filename

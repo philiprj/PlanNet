@@ -4,11 +4,13 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 import torch.optim as optim
 from tqdm import tqdm
+from copy import deepcopy
 
 from relnet.agent.rnet_dqn.q_net import NStepQNet, greedy_actions
 from relnet.agent.rnet_dqn.nstep_replay_mem import NstepReplayMem
 from relnet.agent.pytorch_agent import PyTorchAgent
 from relnet.utils.config_utils import get_device_placement
+from relnet.objective_functions.social_welfare import SocialWelfare
 
 
 class RNetDQNAgent(PyTorchAgent):
@@ -30,6 +32,11 @@ class RNetDQNAgent(PyTorchAgent):
         """
         # Sets up the network and general parameters
         super().setup(options, hyperparams)
+
+        # Sets option for double Q learning
+        if 'double' in options:
+            self.double = options['double']
+
         self.setup_nets()
         self.take_snapshot()
 
@@ -50,7 +57,7 @@ class RNetDQNAgent(PyTorchAgent):
         self.setup_training_parameters(max_steps)
         # Creates a progress bar, unit is each training batch - for burn in phase
         pbar = tqdm(range(self.burn_in), unit='batch', disable=None)
-        # Loops through batches
+        # Loops through batches in burn in phase - exploring the environment
         for p in pbar:
             # With no grad - run simulation
             with torch.no_grad():
@@ -63,23 +70,30 @@ class RNetDQNAgent(PyTorchAgent):
         for self.step in pbar:
             with torch.no_grad():
                 self.run_simulation()
-            # If at snapshot step then take a snapshot
-            if self.step % self.net_copy_interval == 0:
+
+            # If at snapshot step then take a snapshot - or perform a soft update each step
+            if self.soft:
+                for target_param, param in zip(self.old_net.parameters(), self.net.parameters()):
+                    new_target_param = self.tau * param + (1 - self.tau) * target_param
+                    target_param.data.copy_(new_target_param)
+            elif self.step % self.net_copy_interval == 0:
                 self.take_snapshot()
+
             # Check validation loss each step
             self.check_validation_loss(self.step, max_steps)
             """
             Sample memory batch
-            cur_time: time step {0,1} for the action
-            list_st: (graph state, selected node - none if no selection, banned actions - empty if no selection) 
+            cur_time: time step {0,1, 2} for the action
+            list_st: (graph state, selected node, banned actions, action_type) 
             list_as: action selected at s
             list_rt: reward received after action selected - 0 if non-terminal 
-            list_s_primes: s' - graph state after selected action  
+            list_s_primes: s' - graph state after selected action - includes None states? 
             list_term: list of terminal state where no reward if received
+            TODO: check the sampling - should be sampling all the same type? 
             """
-            cur_time, list_st, list_at, list_rt, list_s_primes, list_term = self.mem_pool.sample(
-                batch_size=self.batch_size)
-            # Get target tensor and move to GPU
+            cur_time, list_st, list_at, list_rt, list_s_primes, list_term = \
+                self.mem_pool.sample(batch_size=self.batch_size)
+            # Get target tensor and move to GPU - this stores the rewards, if non terminal then uses target Q
             list_target = torch.Tensor(list_rt)
             if get_device_placement() == 'GPU':
                 list_target = list_target.cuda()
@@ -95,17 +109,32 @@ class RNetDQNAgent(PyTorchAgent):
             # IF list is not empty
             if len(cleaned_sp):
                 # Unzip to get banned values
-                _, _, banned = zip(*cleaned_sp)
-                # Get the next q values for each node in each graph using the target network
-                _, q_t_plus_1, prefix_sum_prime = self.old_net((cur_time + 1) % 2, cleaned_sp, None)
-                # Get the greedy actions using the q values, and noting the banned actions
-                _, q_rhs = greedy_actions(q_t_plus_1, prefix_sum_prime, banned)
+                _, _, banned, action_types = zip(*cleaned_sp)
+                
+                if not self.double:
+                    # Get the next q values for each node in each graph using the target network
+                    _, q_t_plus_1, prefix_sum_prime = self.old_net((cur_time + 1) % 3, cleaned_sp, None)
+                    # If we are dealing with step 1 and 2 then get greedy values, otherwise return already greedy
+                    if (cur_time + 1) % 3 != 0:
+                        # Get the greedy actions using the q values, and noting the banned actions
+                        _, q_t_plus_1 = greedy_actions(q_t_plus_1, prefix_sum_prime, banned)
+                # Performs double Q-Learning
+                else: 
+                    on_policy_actions, q_t_plus_1, prefix_sum_prime = self.net((cur_time + 1) % 3, cleaned_sp, None)
+                    if (cur_time + 1) % 3 != 0:
+                        on_policy_actions, _ = greedy_actions(q_t_plus_1, prefix_sum_prime, banned)
+                    # Convert to a python list type
+                    on_policy_actions = on_policy_actions.squeeze().tolist()
+                    _, q_t_plus_1, _ = self.old_net((cur_time + 1) % 3, cleaned_sp, on_policy_actions)
+                    q_t_plus_1 = torch.squeeze(q_t_plus_1)
+
                 # Update the targets to be the greedy q values
-                list_target[nonterms] = q_rhs
+                list_target[nonterms] += self.discount * q_t_plus_1
             # Convert to torch tensor and n x 1 tensor
             list_target = Variable(list_target.view(-1, 1))
             # Feed to the main network to get the q values for the states and actions selected
-            _, q_sa, _ = self.net(cur_time % 2, list_st, list_at)
+            _, q_sa, _ = self.net(cur_time % 3, list_st, list_at)
+
             # Calculates the loss use MSE from predicted and target values
             loss = F.mse_loss(q_sa, list_target)
             # Zero grad, propagate backwards, and take step
@@ -113,7 +142,7 @@ class RNetDQNAgent(PyTorchAgent):
             loss.backward()
             optimizer.step()
             # Set values for progress bar for printing
-            pbar.set_description('exp: %.5f, loss: %0.5f' % (self.eps, loss))
+            pbar.set_description('epsilon: %.5f, scaled loss: %0.5f' % (self.eps, loss))
             # Checks if early stopping condition has been met
             should_stop = self.check_stopping_condition(self.step, max_steps)
             if should_stop:
@@ -123,8 +152,8 @@ class RNetDQNAgent(PyTorchAgent):
         """
         Initialises the agent network for training
         """
-        self.net = NStepQNet(self.hyperparams, num_steps=2)
-        self.old_net = NStepQNet(self.hyperparams, num_steps=2)
+        self.net = NStepQNet(self.hyperparams, num_steps=3)
+        self.old_net = NStepQNet(self.hyperparams, num_steps=3)
         # Sends Network to GPU or CPU depending on what is available
         if get_device_placement() == 'GPU':
             self.net = self.net.cuda()
@@ -141,7 +170,7 @@ class RNetDQNAgent(PyTorchAgent):
         """
         # Initialises the buffer of a given size
         exp_replay_size = int(num_steps * mem_pool_to_steps_ratio)
-        self.mem_pool = NstepReplayMem(memory_size=exp_replay_size, n_steps=2)
+        self.mem_pool = NstepReplayMem(memory_size=exp_replay_size, n_steps=3)
 
     def setup_training_parameters(self, max_steps):
         """
@@ -181,13 +210,23 @@ class RNetDQNAgent(PyTorchAgent):
         if greedy:
             return self.do_greedy_actions(t)
         else:
-            # If t is divisible by 2 (should this not be eps_step_denominator?)
-            if t % 2 == 0:
+            if t % 3 == 0:
                 # Decay epsilon
                 self.eps = self.eps_end + max(0., (self.eps_start - self.eps_end)
                                               * (self.eps_step - max(0., self.step)) / self.eps_step)
-                # If random value less than epsilon then select exploration action
+
                 if self.local_random.random() < self.eps:
+                    action_type, flag = self.environment.exploratory_actions(self.agent_exploration_policy)
+                    self.next_exploration_actions = flag
+                    return action_type
+                else:
+                    action_type = self.do_greedy_actions(t)
+                    self.next_exploration_actions = None
+                    return action_type
+
+            elif t % 3 == 1:
+                # If random value less than epsilon then select exploration action
+                if self.next_exploration_actions is not None:
                     # Selects and returns current and next exploratory actions
                     exploration_actions_t0, exploration_actions_t1 = \
                         self.environment.exploratory_actions(self.agent_exploration_policy)
@@ -198,6 +237,7 @@ class RNetDQNAgent(PyTorchAgent):
                     greedy_acts = self.do_greedy_actions(t)
                     self.next_exploration_actions = None
                     return greedy_acts
+
             # If not decay value then do not decay - return exploration if previous action was greedy? Seem odd
             else:
                 if self.next_exploration_actions is not None:
@@ -209,9 +249,14 @@ class RNetDQNAgent(PyTorchAgent):
         # Get the current state
         cur_state = self.environment.get_state_ref()
         # Get the output actions
-        actions, _, _ = self.net(time_t % 2, cur_state, None, greedy_acts=True)
+        actions, _, _ = self.net(time_t % 3, cur_state, None, greedy_acts=True)
         # Convert to list and return
         actions = list(actions.cpu().numpy())
+
+        # If on first step then convert to {add, ... }
+        if time_t % 3 == 0:
+            actions = self.action_lookup(actions)
+
         return actions
 
     def agent_exploration_policy(self, i):
@@ -227,9 +272,14 @@ class RNetDQNAgent(PyTorchAgent):
         """
         # Get the indices for the selected graphs
         selected_idx = self.advance_pos_and_sample_indices()
+        # Reset the agent actions for new run - get the initial objective_function values
+        self.train_g_list = [g.randomise_actions() for g in self.train_g_list]
+        self.train_initial_obj_values = self.environment.get_objective_function_values(self.train_g_list)
+
         self.environment.setup([self.train_g_list[idx] for idx in selected_idx],
-                           [self.train_initial_obj_values[idx] for idx in selected_idx],
-                           training=True)
+                               [self.train_initial_obj_values[idx] for idx in selected_idx],
+                               training=True)
+
         # This doesn't seem to do anything?
         self.post_env_setup()
         # Final state is none for each graph
@@ -247,7 +297,11 @@ class RNetDQNAgent(PyTorchAgent):
             non_exhausted_before, = np.where(~self.environment.exhausted_budgets)
             # Convert to a list and take a step in the environment
             list_st = self.environment.clone_state(non_exhausted_before)
-            self.environment.step(list_at)
+            # Get the action types
+            copy_list_st = deepcopy(list_st)
+            _, _, _, action_types = zip(*copy_list_st)
+
+            self.environment.step(list_at, action_types)
             # Update the environments which have now got an exhausted action budget
             non_exhausted_after, = np.where(~self.environment.exhausted_budgets)
             exhausted_after, = np.where(self.environment.exhausted_budgets)
@@ -256,8 +310,13 @@ class RNetDQNAgent(PyTorchAgent):
             # Get the states which are non terminal before and after
             nonterm_st = [list_st[i] for i in nonterm_indices]
             nonterm_at = [list_at[i] for i in non_exhausted_after]
-            # Set the rewards to zero
-            rewards = np.zeros(len(nonterm_at), dtype=np.float)
+
+            # Set the reward to change at the end of each 3 sub step step - should help with credit assignment
+            if self.reward_shaping:
+                rewards = self.environment.rewards
+            else:
+                rewards = np.zeros(len(nonterm_st), dtype=np.float)
+
             # Non terminal next states
             nonterm_s_prime = self.environment.clone_state(non_exhausted_after)
             # Get the indices of states that are now terminal
@@ -273,8 +332,10 @@ class RNetDQNAgent(PyTorchAgent):
                 final_acts[g_list_index] = list_at[g_list_index]
             # If more than one state is non terminal then add to the memory pool
             if len(nonterm_at) > 0:
-                self.mem_pool.add_list(nonterm_st, nonterm_at, rewards,
-                                       nonterm_s_prime, [False] * len(nonterm_at), t % 2)
+                self.mem_pool.add_list(nonterm_st,
+                                       nonterm_at, rewards,
+                                       nonterm_s_prime,
+                                       [False] * len(nonterm_at), t % 3)
             # Increment the time step
             t += 1
         # List the final actions, next states, and get the environment rewards
@@ -282,12 +343,12 @@ class RNetDQNAgent(PyTorchAgent):
         rewards = self.environment.rewards
         final_s_prime = None
         # Add these final actions to the memory
-        self.mem_pool.add_list(final_st, final_at, rewards, final_s_prime, [True] * len(final_at), (t - 1) % 2)
+        _, _, _, a = zip(*final_st)
+
+        self.mem_pool.add_list(final_st, final_at, rewards, final_s_prime,
+                               [True] * len(final_at), (t - 1) % 3)
 
     def post_env_setup(self):
-        """
-        Doesn't appear to do anything!
-        """
         pass
 
     def get_default_hyperparameters(self):
@@ -295,13 +356,12 @@ class RNetDQNAgent(PyTorchAgent):
         Sets the default training parameters
         :return: hyperparameters for training
         """
-        hyperparams = {'learning_rate': 0.0001,
+        hyperparams = {'learning_rate': 0.0005,
                        'epsilon_start': 1,
                        'mem_pool_to_steps_ratio': 1,
-                       'latent_dim': 64,
-                       'hidden': 32,
+                       'latent_dim': 124,
+                       'hidden': 124,
                        'embedding_method': 'mean_field',
-                       'max_lv': 3,
-                       'eps_step_denominator': 10}
+                       'max_lv': 10,
+                       'eps_step_denominator': 2.0}
         return hyperparams
-

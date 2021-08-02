@@ -45,7 +45,7 @@ class NstepReplaySubMemCell(object):
         """
         for i in range(len(list_st)):
             if list_sp is None:
-                sp = (None, None, None)
+                sp = (None, None, None, None)
             else:
                 sp = list_sp[i]
             self.add(list_st[i], list_at[i], list_rt[i], sp, list_term[i])
@@ -92,7 +92,7 @@ def hash_state_action(s_t, a_t):
 
 
 class NstepReplayMemCell(object):
-    def __init__(self, memory_size, balance_sample = False):
+    def __init__(self, memory_size, balance_sample=False):
         self.sub_list = []
         self.balance_sample = balance_sample
         self.sub_list.append(NstepReplaySubMemCell(memory_size))
@@ -101,6 +101,7 @@ class NstepReplayMemCell(object):
             self.state_set = set()
 
     def add(self, s_t, a_t, r_t, s_prime, terminal):
+
         if not self.balance_sample or r_t < 0:
             self.sub_list[0].add(s_t, a_t, r_t, s_prime, terminal)
         else:
@@ -139,7 +140,7 @@ class NstepReplayMem(object):
     def add_list(self, list_st, list_at, list_rt, list_sp, list_term, t):
         for i in range(len(list_st)):
             if list_sp is None:
-                sp = (None, None, None)
+                sp = (None, None, None, None)
             else:
                 sp = list_sp[i]
             self.add(list_st[i], list_at[i], list_rt[i], sp, list_term[i], t)

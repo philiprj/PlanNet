@@ -18,8 +18,8 @@ class BaselineAgent(Agent, ABC):
         super().setup(options, hyperparams)
 
     def make_actions(self, t, **kwargs):
-        if t % 2 == 0:
-            first_actions, second_actions = [], []
+        if t % 3 == 0:
+            first_actions, second_actions, third_actions = [], [], []
             for i in range(len(self.environment.g_list)):
                 first_node, second_node = self.pick_actions_using_strategy(t, i)
                 first_actions.append(first_node)
@@ -54,6 +54,33 @@ class RandomAgent(BaselineAgent):
 
     def pick_actions_using_strategy(self, t, i):
         return self.pick_random_actions(i)
+
+    def agent_exploration_policy(self, i):
+        """
+        :param i: Index of the graph under consideration
+        :return: Returns a random action
+        """
+        return self.pick_random_actions(i)
+
+    def make_actions(self, t, **kwargs):
+        if t % 3 == 0:
+            action_type, flag = self.environment.exploratory_actions(self.agent_exploration_policy)
+            self.next_exploration_actions = flag
+            return action_type
+
+        elif t % 3 == 1:
+            # If random value less than epsilon then select exploration action
+            if self.next_exploration_actions is not None:
+                # Selects and returns current and next exploratory actions
+                exploration_actions_t0, exploration_actions_t1 = \
+                    self.environment.exploratory_actions(self.agent_exploration_policy)
+                self.next_exploration_actions = exploration_actions_t1
+                return exploration_actions_t0
+
+        # If not decay value then do not decay - return exploration if previous action was greedy? Seem odd
+        else:
+            if self.next_exploration_actions is not None:
+                return self.next_exploration_actions
 
 
 class GreedyAgent(BaselineAgent):
@@ -90,109 +117,3 @@ class GreedyAgent(BaselineAgent):
                 first_node, second_node = first, second
 
         return first_node, second_node
-
-
-class LowestToLowestDegreeAgent(BaselineAgent):
-    """
-    Adds edges between two lowest degree nodes
-    """
-    algorithm_name = 'lowest_to_lowest'
-    is_deterministic = True
-
-    def __init__(self, environment):
-        super().__init__(environment)
-
-    def pick_actions_using_strategy(self, t, i):
-        first_node, second_node = None, None
-
-        g = self.environment.g_list[i]
-        non_edges = list(self.environment.get_graph_non_edges(i))
-        if len(non_edges) == 0:
-            return (-1, -1)
-        elif len(non_edges) == 1:
-            return non_edges[0][0], non_edges[0][1]
-
-        degrees = g.node_degrees
-        two_smallest_degrees = np.partition(degrees, 2)[:2]
-        sm1, sm2 = two_smallest_degrees[0], two_smallest_degrees[1]
-
-        for first, second in non_edges:
-            deg1 = degrees[first]
-            deg2 = degrees[second]
-
-            if (deg1 == sm1 and deg1 == sm2) or (deg2 == sm1 and deg1 == sm2):
-                first_node, second_node = first, second
-                break
-
-        # fail-over strategy: if no such edge, pick a random edge.
-        if first_node is None and second_node is None:
-            return self.pick_random_actions(i)
-
-        return first_node, second_node
-
-
-class LowestToRandomDegreeAgent(BaselineAgent):
-    """
-    Adds edges between the lowest degree node and a random available node
-    """
-    algorithm_name = 'lowest_to_random'
-    is_deterministic = False
-
-    def __init__(self, environment):
-        super().__init__(environment)
-
-    def pick_actions_using_strategy(self, t, i):
-        first_node, second_node = None, None
-
-        g = self.environment.g_list[i]
-        banned_first_nodes = g.banned_actions
-
-        valid_first_nodes = self.environment.get_valid_actions(g, banned_first_nodes)
-        if len(valid_first_nodes) == 0:
-            return (-1, -1)
-
-        degrees = g.node_degrees
-        smallest_degree = min(degrees)
-        smallest_degree_nodes = [n for n in valid_first_nodes if degrees[n] == smallest_degree]
-
-        for first in smallest_degree_nodes:
-            budget = self.environment.get_remaining_budget(i)
-            valid_choices = list(self.environment.get_valid_actions(g, g.get_invalid_edge_ends(first, budget)))
-            if len(valid_choices) > 0:
-                first_node = first
-                second_node = self.local_random.choice(valid_choices)
-                break
-
-        # fail-over strategy: if no such edge, pick a random edge.
-        if first_node is None and second_node is None:
-            return self.pick_random_actions(i)
-
-        return first_node, second_node
-
-
-class LowestDegreeProductAgent(BaselineAgent):
-    """
-    Adds edges between two nodes with lowest product degree (rather than sum used before)
-    """
-    algorithm_name = 'lowest_degree_product'
-    is_deterministic = True
-
-    def __init__(self, environment):
-        super().__init__(environment)
-
-    def pick_actions_using_strategy(self, t, i):
-        g = self.environment.g_list[i]
-        non_edges = list(self.environment.get_graph_non_edges(i))
-        if len(non_edges) == 0:
-            return (-1, -1)
-        elif len(non_edges) == 1:
-            return non_edges[0][0], non_edges[0][1]
-
-        feature_products = self.get_local_feature_products(g, non_edges)
-        first_node, second_node = non_edges[np.argpartition(feature_products, 1)[0]]
-        return first_node, second_node
-
-    def get_local_feature_products(self, g, non_edges):
-        degrees = g.node_degrees
-        degree_products = list(map(lambda pair: degrees[pair[0]] * degrees[pair[1]], non_edges))
-        return degree_products

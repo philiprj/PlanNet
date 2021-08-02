@@ -52,7 +52,6 @@ class FilePaths:
 
             self.set_group_permissions()
 
-
     def set_group_permissions(self):
         try:
             for dir in [self.graph_storage_dir, self.logs_dir, self.experiment_dir]:

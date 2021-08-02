@@ -1,6 +1,6 @@
 from copy import deepcopy
 import numpy as np
-from relnet.state.network_generators import NetworkGenerator
+from relnet.state.network_generators import NetworkGenerator, random_action_init
 
 
 class GraphEdgeEnv(object):
@@ -17,13 +17,19 @@ class GraphEdgeEnv(object):
         # Init the parameters
         self.objective_function = objective_function
         self.edge_budget_percentage = edge_budget_percentage
-        # Number of steps in the MDP - step 1 selected from node - step 2 selected to node
-        self.num_mdp_substeps = 2
+
+        """
+        Number of steps in the MDP 
+            - Step 1 select type of action {'add', 'remove', 'flip'}
+            - step 2 selected 1st node 
+            - step 3 selected 2nd node
+        """
+        self.num_mdp_substeps = 3
         # Parameters for the reward
-        self.reward_eps = 1e-4
+        self.reward_eps = 1e-6
         self.reward_scale_multiplier = 100
 
-    def setup(self, g_list, initial_objective_function_values, training=False):
+    def setup(self, g_list, initial_objective_function_values, training=False, intermediate_scale=False):
         """
         Sets up the class
         :param g_list: Graph list
@@ -33,6 +39,7 @@ class GraphEdgeEnv(object):
         """
         # Graphs in a list and the number of steps taken
         self.g_list = g_list
+
         self.n_steps = 0
         # Total budget for making changes to each graph, and count for budget used
         self.edge_budgets = self.compute_edge_budgets(self.g_list, self.edge_budget_percentage)
@@ -43,7 +50,7 @@ class GraphEdgeEnv(object):
             g = g_list[i]
             g.first_node = None
             # Set banned actions to be more expensive than the budget
-            g.populate_banned_actions(self.edge_budgets[i])
+            g.populate_banned_actions(self.edge_budgets[i], None)
         # Set training or testing
         self.training = training
         # Define the objective function initial values for each graph
@@ -55,6 +62,12 @@ class GraphEdgeEnv(object):
         if self.training:
             self.objective_function_values[0, :] = \
                 np.multiply(self.objective_function_values[0, :], self.reward_scale_multiplier)
+
+        self.intermediate_scale = intermediate_scale
+        if intermediate_scale:
+            self.scale_value = 1.0
+        else:
+            self.scale_value = 0.0
 
     def pass_logger_instance(self, logger):
         # Sets current log
@@ -81,12 +94,14 @@ class GraphEdgeEnv(object):
         """
         # Get the current graph
         g = self.g_list[i]
+        # Get the current budget for moves and init set
+        budget = self.get_remaining_budget(i)
+        # Populate banned actions for adding an edge
+        g.populate_banned_actions(budget, 'add')
         # Get the banned first nodes
         banned_first_nodes = g.banned_actions
         # Get the valid first actions
         valid_acts = self.get_valid_actions(g, banned_first_nodes)
-        # Get the current budget for moves and init set
-        budget = self.get_remaining_budget(i)
         non_edges = set()
         # Loop through valid initial nodes
         for first in valid_acts:
@@ -100,6 +115,24 @@ class GraphEdgeEnv(object):
                     continue
                 non_edges.add((first, second))
         # Return the non connected valid edge set
+        return non_edges
+
+    def get_graph_edges(self, i):
+        g = self.g_list[i]
+        budget = self.get_remaining_budget(i)
+        g.populate_banned_actions(budget, 'remove')
+        banned_first_nodes = g.banned_actions
+        valid_acts = self.get_valid_actions(g, banned_first_nodes)
+        non_edges = set()
+        for first in valid_acts:
+            # Get the invalid end - ones that would disconnect the graph
+            banned_second_nodes = g.invalid_edge_ends_removal(first, budget)
+            valid_second_nodes = self.get_valid_actions(g, banned_second_nodes)
+            # Loop through 2nd nodes and add if not in set already
+            for second in valid_second_nodes:
+                if (first, second) in non_edges or (second, first) in non_edges:
+                    continue
+                non_edges.add((first, second))
         return non_edges
 
     def get_remaining_budget(self, i):
@@ -140,15 +173,23 @@ class GraphEdgeEnv(object):
         return valid_first_nodes
 
     @staticmethod
-    def apply_action(g, action, remaining_budget, copy_state=False):
+    def apply_action(g, action, remaining_budget, action_type=None, copy_state=False):
         """
         Applies the action to the graph to update the graph
         :param g: graph
         :param action: selected node (1st node then 2nd node)
         :param remaining_budget: budget for changes to the graph
+        :param action_type: type of action being applied
         :param copy_state: bool for copying or changing graph directly
         :return: Graph with change and remaining budget
         """
+        # If we are on the first step picking the action then update the internal state and continue
+        if action in ['add', 'remove', 'flip']:
+            g_ref = g
+            g_ref.action_type = action
+            g_ref.populate_banned_actions(remaining_budget, g_ref.action_type)
+            return g_ref, remaining_budget
+
         # If the action is for the first node
         if g.first_node is None:
             # If copy state then make a copy
@@ -159,14 +200,22 @@ class GraphEdgeEnv(object):
                 g_ref = g
             # Set the first node of edge as action
             g_ref.first_node = action
+
             # Update the banned action using the remaining budget for actions
-            g_ref.populate_banned_actions(remaining_budget)
+            g_ref.populate_banned_actions(remaining_budget, action_type)
             # Return the graph and budget
             return g_ref, remaining_budget
         # If the action is the 2nd node then add the full edge
         else:
-            # Add edge from first to 2nd node and set first node to None
-            new_g, edge_cost = g.add_edge(g.first_node, action)
+            if action_type == 'add':
+                # Add edge from first to 2nd node and set first node to None
+                new_g, edge_cost = g.add_edge(g.first_node, action)
+            elif action_type == 'remove':
+                new_g, edge_cost = g.remove_edge(g.first_node, action)
+            elif action_type == 'flip':
+                # 2nd action may be None
+                new_g, edge_cost = g.flip_node(g.first_node, action)
+
             new_g.first_node = None
             # Update the budget with cost of move and update banned actions
             updated_budget = remaining_budget - edge_cost
@@ -174,12 +223,14 @@ class GraphEdgeEnv(object):
             # Return updated graph and budget
             return new_g, updated_budget
 
-    def step(self, actions):
+    def step(self, actions, action_types):
         """
         Takes a step in the environment given the actions
         :param actions: List of nodes - corresponds to actions for each graph
+        :param action_types: List of action types for each graph - [{'add', 'remove', 'flip'}]
         """
         # Loop through each graph
+        curr_objective_function_value = self.objective_function_values[0, :]
         for i in range(len(self.g_list)):
             # If still has budget for action
             if not self.exhausted_budgets[i]:
@@ -194,28 +245,43 @@ class GraphEdgeEnv(object):
                 # Get remaining budget
                 remaining_budget = self.get_remaining_budget(i)
                 # Apply the action and get updated graph
-                self.g_list[i], updated_budget = self.apply_action(self.g_list[i], actions[i], remaining_budget)
+                self.g_list[i], updated_budget = \
+                    self.apply_action(self.g_list[i], actions[i], remaining_budget, action_type=action_types[i])
                 # Update the budget
                 self.used_edge_budgets[i] += (remaining_budget - updated_budget)
-                # If odd step, adding 2nd node to edge
-                if self.n_steps % 2 == 1:
-                    # If banned actions is all actions then set bool to true to stop updating graph
-                    if self.g_list[i].banned_actions == self.g_list[i].all_nodes_set:
-                        self.exhausted_budgets[i] = True
-                        # Get final objective function value
-                        objective_function_value = self.get_objective_function_value(self.g_list[i])
-                        # If still training then scale the reward
-                        if self.training:
-                            objective_function_value = objective_function_value * self.reward_scale_multiplier
-                        # Set final value
-                        self.objective_function_values[-1, i] = objective_function_value
-                        # Get the reward as the change from initial to final value
-                        reward = objective_function_value - self.objective_function_values[0, i]
-                        # If change is too small then just set to the 0
-                        if abs(reward) < self.reward_eps:
-                            reward = 0.
-                        # Set reward in the results array
-                        self.rewards[i] = reward
+
+                # If odd step and no budget then get final result
+                if (self.n_steps % 3 == 2) and (self.g_list[i].banned_actions == self.g_list[i].all_nodes_set):
+                    self.exhausted_budgets[i] = True
+
+                # Get final objective function value
+                objective_function_value = self.get_objective_function_value(self.g_list[i])
+                # If still training then scale the reward
+                if self.training:
+                    objective_function_value = objective_function_value * self.reward_scale_multiplier
+                # Set final value
+                self.objective_function_values[-1, i] = objective_function_value
+
+                # Controls reward scaling and intermediate rewards
+                if self.exhausted_budgets[i]:
+                    reward = \
+                        (objective_function_value - self.objective_function_values[0, i]) + \
+                        (objective_function_value - curr_objective_function_value[i]) * self.scale_value
+                else:
+                    reward = \
+                        (objective_function_value - curr_objective_function_value[i]) * self.scale_value
+
+                # Defines a pure intermediate objective (including for terminal states)
+                # reward = objective_function_value - curr_objective_function_value[i]
+
+                # If change is too small then just set to the 0
+                if abs(reward) < self.reward_eps:
+                    reward = 0.
+                # Set reward in the results array
+                self.rewards[i] = reward
+                # Update the current objective
+                curr_objective_function_value[i] = objective_function_value
+
         # Increment steps after full loop
         self.n_steps += 1
 
@@ -250,8 +316,9 @@ class GraphEdgeEnv(object):
         # Gets the first_node for each graph, and the banned nodes
         cp_first = [g.first_node for g in self.g_list]
         b_list = [g.banned_actions for g in self.g_list]
+        at_list = [g.action_type for g in self.g_list]
         # Return the lists in an iterable list
-        return zip(self.g_list, cp_first, b_list)
+        return zip(self.g_list, cp_first, b_list, at_list)
 
     def clone_state(self, indices=None):
         # Returns a copy of the states
@@ -264,9 +331,11 @@ class GraphEdgeEnv(object):
             cp_g_list = []
             cp_first = []
             b_list = []
+            at_list = []
             for i in indices:
                 cp_g_list.append(deepcopy(self.g_list[i]))
                 cp_first.append(deepcopy(self.g_list[i].first_node))
                 b_list.append(deepcopy(self.g_list[i].banned_actions))
+                at_list.append(deepcopy(self.g_list[i].action_type))
             # Return the zip for the graphs
-            return list(zip(cp_g_list, cp_first, b_list))
+            return list(zip(cp_g_list, cp_first, b_list, at_list))

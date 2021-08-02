@@ -21,11 +21,12 @@ class PyTorchAgent(Agent):
         # USed for logging history
         self.hist_out = None
         # Used for checking if a better significantly better validation loss has been found
-        self.validation_change_threshold = 1e-5
+        self.validation_change_threshold = 1e-7
         # Counter for checking if training with no improvement
         self.best_validation_changed_step = -1
         # Loss checker
-        self.best_validation_loss = float("inf")
+        # self.best_validation_loss = float("inf")
+        self.best_validation_loss = -float("inf")
         # Counter for position in buffer or dataset of graphs?
         self.pos = 0
         # Step count - not sure if its used
@@ -101,10 +102,11 @@ class PyTorchAgent(Agent):
             validation_loss = self.log_validation_loss(step_number, make_action_kwargs=make_action_kwargs)
             # If logging then log the relevant info
             if self.log_progress:
-                self.logger.info(f"{model_tag if model_tag is not None else 'model'} validation loss:"
+                self.logger.info(f"{model_tag if model_tag is not None else 'model'} validation performance:"
                                  f" {validation_loss: .4f} at step {step_number}.")
             # If loss if significantly better then log and save
-            if (self.best_validation_loss - validation_loss) > self.validation_change_threshold:
+            if (self.best_validation_loss < validation_loss) and \
+                    ((validation_loss - self.best_validation_loss) > self.validation_change_threshold):
                 # If logging then log the relevant info then save stats
                 if self.log_progress:
                     self.logger.info(f"rejoice! found a better validation loss at step {step_number}.")
@@ -124,23 +126,23 @@ class PyTorchAgent(Agent):
         :return: Validation loss at current step
         """
         # Calculates the performance on the validation set
+        # Reset the agent actions for new run - get the initial objective_function values
+        # self.validation_g_list = [g.randomise_actions() for g in self.validation_g_list]
+        # self.validation_initial_obj_values = self.environment.get_objective_function_values(self.validation_g_list)
+
         performance = self.eval(self.validation_g_list,
                                 self.validation_initial_obj_values,
                                 validation=True,
                                 make_action_kwargs=make_action_kwargs)
 
-        # Upper limit of the objective improvement - will normalise rewards so max reward sums to 1.
-        # Thus max improvement is from 0 to 1
-        max_improvement = 1.0
-        validation_loss = max_improvement - performance
         # If logging - do logs
         if self.log_tf_summaries:
             # Maybe should be in main imports but uses here to save memory if not required
             from tensorflow import Summary
             # Uses tensorflow to write a summary - do we need this?
             validation_summary = Summary(value=[
-                Summary.Value(tag="validation_loss", simple_value=validation_loss)])
-            # I think this is a tensorbaord feature
+                Summary.Value(tag="validation_performance", simple_value=performance)])
+            # Write to tensorbaord
             self.file_writer.add_summary(validation_summary, step)
             # Tries to write tensorboard info to disk
             try:
@@ -163,7 +165,21 @@ class PyTorchAgent(Agent):
                     self.logger.warn("caught an exception when trying to flush evaluation history.")
                     self.logger.warn(traceback.format_exc())
         # Return the validation loss
-        return validation_loss
+        return performance
+
+    def log_test_performance(self, performance, baseline=False):
+        if self.hist_out is not None:
+            if not baseline:
+                self.hist_out.write('Test set performance,%.6f\n' % (performance))
+            else:
+                self.hist_out.write('Baseline test set performance,%.6f\n' % (performance))
+            # Try offloading but except if not
+            try:
+                self.hist_out.flush()
+            except BaseException:
+                if self.logger is not None:
+                    self.logger.warn("caught an exception when trying to flush evaluation history.")
+                    self.logger.warn(traceback.format_exc())
 
     def print_model_parameters(self):
         """
@@ -237,10 +253,10 @@ class PyTorchAgent(Agent):
             self.models_path = Path.cwd() / FilePaths.MODELS_DIR_NAME
         # Defines path for saving models
         self.checkpoints_path = self.models_path / FilePaths.CHECKPOINTS_DIR_NAME
-        # If using tensorbar then set up
+        # If using tensorboard set up
         if 'log_tf_summaries' in options and options['log_tf_summaries']:
             self.summaries_path = self.models_path / FilePaths.SUMMARIES_DIR_NAME
-            # Import relevent tensorflow modules
+            # Import relevant tensorflow modules
             from tensorflow import Graph
             from tensorflow.summary import FileWriter
             self.log_tf_summaries = True
@@ -249,6 +265,18 @@ class PyTorchAgent(Agent):
             self.file_writer = FileWriter(summary_run_dir, Graph())
         else:
             self.log_tf_summaries = False
+        if 'discount' in options:
+            self.discount = options['discount']
+        else:
+            self.discount = 0.95
+        if 'soft' in options:
+            self.soft = options['soft']
+            if 'tau' in options:
+                self.tau = options['tau']
+            else:
+                self.tau = 0.01
+        else:
+            self.soft = False
 
     def get_summaries_run_path(self):
         """
