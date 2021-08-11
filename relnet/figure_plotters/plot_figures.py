@@ -72,5 +72,5 @@ def save_raw(game, graph, n, m):
 
 if __name__ == '__main__':
 
-    plot_tests(game="bspgg", graph="er", m="2")
-    # save_raw(game="bspgg", graph="er", n="100", m="248")
+    # plot_tests(game="bspgg", graph="er", m="2")
+    save_raw(game="majority", graph="er", n="25", m="39")
