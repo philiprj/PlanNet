@@ -134,6 +134,11 @@ class NetworkGenerator(ABC):
         return int(math.ceil((total_possible_edges * edge_percentage / 100)))
 
     @staticmethod
+    def compute_edges_changes(m, edge_percentage):
+        # Returns the integer number of edges from the total number of edges available and the edge percentage
+        return int(math.ceil((m * edge_percentage / 100)))
+
+    @staticmethod
     def construct_network_seeds(num_train_graphs, num_validation_graphs, num_test_graphs):
         # Random seeds for network generation, each unique in ascending order
         train_seeds = list(range(0, num_train_graphs))
@@ -163,7 +168,7 @@ class GNMNetworkGenerator(OrdinaryGraphGenerator):
     """
     Creates a random network with a set number of nodes and edges
     """
-    name = 'random_network'
+    name = 'erdos_renyi'
     num_tries = 10000
 
     def generate_instance(self, gen_params, random_seed):
@@ -191,6 +196,20 @@ class GNMNetworkGenerator(OrdinaryGraphGenerator):
                 else:
                     continue
             raise ValueError("Maximum number of tries exceeded, giving up...")
+
+    @staticmethod
+    def get_data_filename(gen_params, random_seed):
+        # Creates a file name from the parameters used
+        n, m = gen_params['n'], gen_params['m']
+        filename = f"{n}-{m}-{random_seed}.graphml"
+        return filename
+
+    @staticmethod
+    def get_drawing_filename(gen_params, random_seed):
+        # Creates a drawing file name from the parameters used
+        n, m = gen_params['n'], gen_params['m']
+        filename = f"{n}-{m}-{random_seed}.png"
+        return filename
 
 
 class BANetworkGenerator(OrdinaryGraphGenerator):

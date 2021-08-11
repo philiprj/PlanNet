@@ -11,6 +11,9 @@ class Agent(ABC):
     def __init__(self, environment):
         self.environment = environment
 
+        self.initial_obj_values = None
+        self.final_obj_values = None
+
     def train(self, train_g_list, validation_g_list, max_steps, **kwargs):
         pass
 
@@ -24,6 +27,10 @@ class Agent(ABC):
         eval_nets = [deepcopy(g) for g in g_list]
         initial_obj_values, final_obj_values = \
             get_values_for_g_list(self, eval_nets, initial_obj_values, validation, make_action_kwargs)
+
+        # Update the objective values for logging raw values
+        self.initial_obj_values = initial_obj_values
+        self.final_obj_values = final_obj_values
 
         if not test_set or self.logger is None:
             return eval_on_dataset(initial_obj_values, final_obj_values)
@@ -76,8 +83,10 @@ class Agent(ABC):
         g = self.environment.g_list[i]
 
         if g.action_type is None:
-            action = self.local_random.choice(['add', 'remove', 'flip'])
-            # g.action_type = action
+            if len(g.banned_actions) == 0:
+                action = self.local_random.choice(['add', 'remove', 'flip'])
+            else:
+                action = self.local_random.choice(['add', 'flip'])
             return action, -1
 
         # Graph will contain state of available actions

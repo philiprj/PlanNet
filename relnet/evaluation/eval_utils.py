@@ -53,9 +53,12 @@ def get_values_for_g_list(agent, g_list, initial_obj_values, validation, make_ac
     return obj_values, final_obj_values
 
 
-def eval_on_dataset(initial_objective_function_values, final_objective_function_values):
-    # returns the mean over the entire dataset
-    return np.mean(final_objective_function_values - initial_objective_function_values)
+def eval_on_dataset(initial_objective_function_values, final_objective_function_values, mean=True):
+    # Return the mean error or array of error values.
+    if mean:
+        return np.mean(final_objective_function_values - initial_objective_function_values)
+    else:
+        return final_objective_function_values - initial_objective_function_values
 
 
 def record_episode_histories(agent, g_list):

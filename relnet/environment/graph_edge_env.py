@@ -29,7 +29,7 @@ class GraphEdgeEnv(object):
         self.reward_eps = 1e-6
         self.reward_scale_multiplier = 100
 
-    def setup(self, g_list, initial_objective_function_values, training=False, intermediate_scale=False):
+    def setup(self, g_list, initial_objective_function_values, training=False, intermediate_scale=True):
         """
         Sets up the class
         :param g_list: Graph list
@@ -140,7 +140,7 @@ class GraphEdgeEnv(object):
         return self.edge_budgets[i] - self.used_edge_budgets[i]
 
     @staticmethod
-    def compute_edge_budgets(g_list, edge_budget_percentage):
+    def compute_edge_budgets(g_list, edge_budget_percentage, of_max=False):
         """
         Computes budget for making changes for each graph
         :param g_list: List of graphs
@@ -153,8 +153,12 @@ class GraphEdgeEnv(object):
         for i in range(len(g_list)):
             # Get number of nodes for the graph, and compute budget using this and relative budget parameter
             g = g_list[i]
-            n = g.num_nodes
-            edge_budgets[i] = NetworkGenerator.compute_number_edges(n, edge_budget_percentage)
+            if of_max:
+                n = g.num_nodes
+                edge_budgets[i] = NetworkGenerator.compute_number_edges(n, edge_budget_percentage)
+            else:
+                m = g.num_edges
+                edge_budgets[i] = NetworkGenerator.compute_edges_changes(m, edge_budget_percentage)
         # Return budget for each graph
         return edge_budgets
 
@@ -219,6 +223,7 @@ class GraphEdgeEnv(object):
             new_g.first_node = None
             # Update the budget with cost of move and update banned actions
             updated_budget = remaining_budget - edge_cost
+            # Will ban removal action if no nodes to remove
             new_g.populate_banned_actions(updated_budget)
             # Return updated graph and budget
             return new_g, updated_budget

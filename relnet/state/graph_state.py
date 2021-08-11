@@ -114,6 +114,9 @@ class S2VGraph(object):
                 return
         if action is None:
             self.banned_actions = set()
+            # If all nodes degrees one then can't remove edge
+            if len(self.invalid_first_node_removal(budget)) == self.num_nodes:
+                self.banned_actions.update('remove')
             return
         # otherwise, if no first node selected
         if self.first_node is None:
@@ -426,7 +429,7 @@ class S2VGraph(object):
                 # g = self.apply_actions_2_nx()
                 c += 1
             # keeps track of a counter to ensure we don't spend too long attempting to reach equilibrium
-            if c >= 10000:
+            if c >= 20000:
                 print("No equilibrium found: continuing with the program.")
                 break
         # Update the rewards before returning

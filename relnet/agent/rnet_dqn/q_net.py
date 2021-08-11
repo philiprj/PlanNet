@@ -112,7 +112,10 @@ class QNet(GNNRegressor, nn.Module):
         self.linear_action_1 = nn.Linear(embed_dim, hyperparams['hidden'])
         self.linear_action_out = nn.Linear(hyperparams['hidden'], 3)
 
-        # Initialises the weights
+        # Set batch normalisation - hopefully this helps with performance
+        self.bn = nn.BatchNorm1d(num_features=hyperparams['hidden'])
+
+        # Initialises the weights using glorot initialisation
         weights_init(self)
         # Features per nodes for S2V - no feats for edges - added features for actions and rewards - one hot for
         # action and node selection
@@ -269,7 +272,8 @@ class QNet(GNNRegressor, nn.Module):
             # Concatenate the embedded and graph embedded along 1st dim
             embed_s_a = torch.cat((embed, graph_embed), dim=1)
             # Apply layers and relu activation
-            embed_s_a = F.relu(self.linear_1(embed_s_a))
+            # embed_s_a = F.relu(self.linear_1(embed_s_a))
+            embed_s_a = F.relu(self.bn(self.linear_1(embed_s_a)))
             # Estimate the Q(s,a) for each available action - batches each available action together
             raw_pred = self.linear_out(embed_s_a)
             # If taking greedy actions then take raw prediction and pick actions
@@ -281,36 +285,28 @@ class QNet(GNNRegressor, nn.Module):
         else:
             if actions is None:
                 # Seems the embed gives embedding for each node - graph embed is for whole - since action choice
-                embed_s_a = F.relu(self.linear_action_1(graph_embed))
+                # embed_s_a = F.relu(self.linear_action_1(graph_embed))
+                embed_s_a = F.relu(self.bn(self.linear_action_1(graph_embed)))
 
                 raw_pred = self.linear_action_out(embed_s_a)
-                q_values = F.softmax(raw_pred, dim=1)
+                q_values = F.softmax(raw_pred.clone().detach(), dim=1)
 
-                # New
+                # If remove is unavailable then zero-out
+                # if (len(set(banned_list)) != 1) or (banned_list[0] == 'remove'):
+                for i, ban in enumerate(banned_list):
+                    if ban != set():
+                        q_values[i, 1] = float(np.finfo(np.float32).min)
+
                 actions = torch.argmax(q_values, dim=1)
                 action_indices = actions.reshape(-1, 1)
-                raw_pred = torch.squeeze(torch.gather(q_values, 1, action_indices))
-
-                # Old
-                # # Convert torch values to numpy
-                # q_vals_cpu = q_values.data.cpu().numpy()
-                # raw_pred = raw_pred.data.cpu().numpy()
-                # # Get the index of max values for each graph, and associated values
-                # actions = np.argmax(q_vals_cpu, axis=1)
-                # # raw_pred = np.max(q_vals_cpu, axis=1)
-                # action_indices = actions.reshape(-1, 1)
-                # raw_pred = np.take_along_axis(raw_pred, action_indices, axis=1)
-                # raw_pred = np.squeeze(raw_pred)
-                # actions = torch.LongTensor(actions)
-                # raw_pred = torch.Tensor(raw_pred)
+                raw_pred = torch.squeeze(torch.gather(raw_pred, 1, action_indices))
 
                 return actions, raw_pred, prefix_sum
             # If we have given actions then select Q values for the actions
             else:
                 # Get the graph embeddings
-                embed_s_a = F.relu(self.linear_action_1(graph_embed))
-
-                # q_values = F.softmax(self.linear_action_out(embed_s_a), dim=1)
+                # embed_s_a = F.relu(self.linear_action_1(graph_embed))
+                embed_s_a = F.relu(self.bn(self.linear_action_1(graph_embed)))
                 q_values = self.linear_action_out(embed_s_a)
 
                 # Convert given actions to {0,1,2} then set to torch tensor

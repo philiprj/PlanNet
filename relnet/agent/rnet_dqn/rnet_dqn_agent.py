@@ -136,7 +136,15 @@ class RNetDQNAgent(PyTorchAgent):
             _, q_sa, _ = self.net(cur_time % 3, list_st, list_at)
 
             # Calculates the loss use MSE from predicted and target values
-            loss = F.mse_loss(q_sa, list_target)
+            # loss = F.mse_loss(q_sa, list_target)
+            # Get TD error
+            td = q_sa - list_target
+            # Clip between max and min rewards
+            clip_val = self.environment.reward_scale_multiplier
+            td = torch.clamp(td, min=-clip_val, max=clip_val)
+            # Calculates the mean squared error
+            loss = (td.pow(2)).mean()
+
             # Zero grad, propagate backwards, and take step
             optimizer.zero_grad()
             loss.backward()
@@ -356,12 +364,12 @@ class RNetDQNAgent(PyTorchAgent):
         Sets the default training parameters
         :return: hyperparameters for training
         """
-        hyperparams = {'learning_rate': 0.0005,
+        hyperparams = {'learning_rate': 0.00025,
                        'epsilon_start': 1,
                        'mem_pool_to_steps_ratio': 1,
-                       'latent_dim': 124,
-                       'hidden': 124,
+                       'latent_dim': 64,
+                       'hidden': 64,
                        'embedding_method': 'mean_field',
-                       'max_lv': 10,
+                       'max_lv': 4,
                        'eps_step_denominator': 2.0}
         return hyperparams
