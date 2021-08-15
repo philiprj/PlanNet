@@ -19,26 +19,26 @@ class BaselineAgent(Agent, ABC):
 
     def make_actions(self, t, **kwargs):
         if t % 3 == 0:
-            first_actions, second_actions, third_actions = [], [], []
-            for i in range(len(self.environment.g_list)):
-                first_node, second_node = self.pick_actions_using_strategy(t, i)
-                first_actions.append(first_node)
-                second_actions.append(second_node)
+            action_type, flag = self.environment.exploratory_actions(self.pick_actions_using_strategy)
+            self.next_exploration_actions = flag
+            return action_type
 
-            self.future_actions = second_actions
-            chosen_actions = first_actions
+        elif t % 3 == 1:
+            if self.next_exploration_actions is not None:
+                exploration_actions_t0, exploration_actions_t1 = \
+                    self.environment.exploratory_actions(self.pick_actions_using_strategy)
+                self.next_exploration_actions = exploration_actions_t1
+                return exploration_actions_t0
 
         else:
-            chosen_actions = self.future_actions
-            self.future_actions = None
-
-        return chosen_actions
+            if self.next_exploration_actions is not None:
+                return self.next_exploration_actions
 
     def finalize(self):
         pass
 
     @abstractmethod
-    def pick_actions_using_strategy(self, t, i):
+    def pick_actions_using_strategy(self, i):
         pass
 
 
@@ -52,68 +52,109 @@ class RandomAgent(BaselineAgent):
     def __init__(self, environment):
         super().__init__(environment)
 
-    def pick_actions_using_strategy(self, t, i):
+    def pick_actions_using_strategy(self, i):
         return self.pick_random_actions(i)
 
-    def agent_exploration_policy(self, i):
-        """
-        :param i: Index of the graph under consideration
-        :return: Returns a random action
-        """
-        return self.pick_random_actions(i)
 
-    def make_actions(self, t, **kwargs):
-        if t % 3 == 0:
-            action_type, flag = self.environment.exploratory_actions(self.agent_exploration_policy)
-            self.next_exploration_actions = flag
-            return action_type
-
-        elif t % 3 == 1:
-            # If random value less than epsilon then select exploration action
-            if self.next_exploration_actions is not None:
-                # Selects and returns current and next exploratory actions
-                exploration_actions_t0, exploration_actions_t1 = \
-                    self.environment.exploratory_actions(self.agent_exploration_policy)
-                self.next_exploration_actions = exploration_actions_t1
-                return exploration_actions_t0
-
-        # If not decay value then do not decay - return exploration if previous action was greedy? Seem odd
-        else:
-            if self.next_exploration_actions is not None:
-                return self.next_exploration_actions
-
-
-class GreedyAgent(BaselineAgent):
+class EdgeConnectAgent(BaselineAgent):
     """
-    Selects the highest value action at all points - no exploration policy
+    Connect nodes with lowest reward, playing non-dominant action, to a node with high reward playing dominant action.
     """
-    algorithm_name = 'greedy'
+    algorithm_name = 'edge_connect'
     is_deterministic = True
 
     def __init__(self, environment):
         super().__init__(environment,)
 
-    def pick_actions_using_strategy(self, t, i):
+    def pick_actions_using_strategy(self, i):
+        first_node, second_node = None, None
+        g = self.environment.g_list[i]
+
+        if g.action_type is None:
+            first_node = 'add'
+            second_node = -1.
+            return first_node, second_node
+
+        # Get rewards and action dict, node degree array
+        all_nodes = g.all_nodes_set
+        rewards = g.rewards
+        actions = g.actions
+        banned_first_nodes = g.banned_actions
+        first_valid_acts = self.environment.get_valid_actions(g, banned_first_nodes)
+        if len(first_valid_acts) == 0:
+            return -1, -1
+
+        # Get the dominant action
+        if (sum(list(actions.values())) / len(list(actions.values()))) < 0.5:
+            dominant_action = 0.
+        else:
+            dominant_action = 1.
+
+        # Get agents playing non-dominant action
+        non_dom_nodes = []
+        for node, action in actions.items():
+            if (action != dominant_action) and (node not in banned_first_nodes):
+                non_dom_nodes.append(node)
+        # Find agent with lowest reward
+        if len(non_dom_nodes) > 0:
+            curr_val = 1.
+            for node in non_dom_nodes:
+                if rewards[node] < curr_val:
+                    curr_val = rewards[node]
+                    first_node = node
+            # Get dominant nodes
+            dom_nodes = list(all_nodes - set(non_dom_nodes))
+            curr_val = 0.
+            banned_second_nodes = g.get_invalid_edge_ends(first_node, self.environment.get_remaining_budget(i))
+            for node in dom_nodes:
+                if (rewards[node] > curr_val) and (node not in banned_second_nodes):
+                    curr_val = rewards[node]
+                    second_node = node
+
+        # If no nodes satisfy the criteria, then pick randomly
+        if (first_node is None) or (second_node is None):
+            first_node, second_node = self.pick_random_actions(i)
+
+        return first_node, second_node
+
+
+class LowDegreeTarget(BaselineAgent):
+    """
+    Flip node playing contributes with few connections
+    """
+    algorithm_name = 'Low_Degree'
+    is_deterministic = True
+
+    def __init__(self, environment):
+        super().__init__(environment,)
+
+    def pick_actions_using_strategy(self, i):
         first_node, second_node = None, None
 
         g = self.environment.g_list[i]
-        non_edges = list(self.environment.get_graph_non_edges(i))
-        if len(non_edges) == 0:
-            return (-1, -1)
-        elif len(non_edges) == 1:
-            return non_edges[0][0], non_edges[0][1]
 
-        initial_value = self.environment.objective_function_values[0, i]
-        best_difference = float("-inf")
+        if g.action_type is None:
+            first_node = 'flip'
+            second_node = -1.
+            return first_node, second_node
 
-        for first, second in non_edges:
-            g_copy = g.copy()
-            next_g, _ = g_copy.add_edge(first, second)
-            next_value = self.environment.get_objective_function_value(next_g)
+        degrees = g.node_degrees
+        actions = g.actions
 
-            diff = next_value - initial_value
-            if diff > best_difference:
-                best_difference = diff
-                first_node, second_node = first, second
+        # Get agents playing non-dominant action
+        contributes = []
+        for node, action in actions.items():
+            if action == 1:
+                contributes.append(node)
+        # Find agent with lowest degree
+        curr_min = float(np.finfo(np.float32).max)
+        curr_min2 = float(np.finfo(np.float32).max)
+        for node in contributes:
+            if degrees[node] < curr_min:
+                curr_min = degrees[node]
+                first_node = node
+            elif degrees[node] < curr_min2:
+                curr_min2 = degrees[node]
+                second_node = node
 
         return first_node, second_node

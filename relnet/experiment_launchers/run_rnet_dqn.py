@@ -5,7 +5,7 @@ from pathlib import Path
 sys.path.append('/relnet')
 from relnet.agent.pytorch_agent import PyTorchAgent
 from relnet.agent.rnet_dqn.rnet_dqn_agent import RNetDQNAgent
-from relnet.agent.baseline.baseline_agent import RandomAgent
+from relnet.agent.baseline.baseline_agent import RandomAgent, EdgeConnectAgent, LowDegreeTarget
 from relnet.environment.graph_edge_env import GraphEdgeEnv
 from relnet.evaluation.file_paths import FilePaths
 from relnet.state.network_generators import NetworkGenerator, BANetworkGenerator, WSNetworkGenerator, \
@@ -17,17 +17,17 @@ def get_gen_params():
     # Defines the network generation parameters
     gp = {}
     # Define the type of graph
-    gp['type'] = 'er' # ['ba', 'ws', 'er']
+    gp['type'] = 'er'   # ['ba', 'ws', 'er']
     # Nodes
-    gp['n'] = 25
+    gp['n'] = 100
     # Parameters for Barabasi-Albert Graph
     gp['m_ba'] = 1
     # Parameters for Watts-Strogatz Graph
     gp['k_ws'], gp['p_ws'] = 2, 0.5
     # Number of edges compared to nodes
-    gp['m_percentage_er'] = 13
-    gp['m'] = NetworkGenerator.compute_number_edges(gp['n'], gp['m_percentage_er'])
-    print(gp['m'] / gp['n'])
+    gp['m_percentage_er'] = 3
+    # gp['m'] = NetworkGenerator.compute_number_edges(gp['n'], gp['m_percentage_er'])
+    gp['m'] = 149
     return gp
 
 
@@ -42,9 +42,10 @@ def get_identifier_prefix(gen_params, gtype):
 
     return f"{gtype}_{gen_params['type']}_{gen_params['n']}_{m}"
 
+
 def get_options(file_paths, gen_params):
     # Defines the general options for logging/saving results
-    game_type = 'majority' # ['majority', 'bspgg', 'pgg']
+    game_type = 'majority'  # ['majority', 'bspgg', 'pgg']
 
     options = {"log_progress": True,
                "log_filename": str(file_paths.construct_log_filepath()),
@@ -53,11 +54,11 @@ def get_options(file_paths, gen_params):
                "models_path": file_paths.models_dir,
                "game_type": game_type,
                'model_identifier_prefix': get_identifier_prefix(gen_params, game_type),
-               "restore_model": False,
+               "restore_model": True,
                "validation_check_interval": 50,
                'reward_shaping': True,
                'pytorch_full_print': False,
-               'max_validation_consecutive_steps': 2000,
+               'max_validation_consecutive_steps': 750,
                'double': True,
                'soft': True,
                'tau': 0.1,
@@ -137,8 +138,24 @@ if __name__ == '__main__':
     rand_agent = RandomAgent(target_env)
     rand_agent.setup(get_rand_options(file_paths), None)
     baseline_perf = rand_agent.eval(test_graphs, test_set=True, baseline=True)
-    agent.log_test_performance(test_perf,
-                               baseline_perf,
-                               agent.initial_obj_values,
-                               agent.final_obj_values,
-                               rand_agent.final_obj_values)
+
+    # Get Added baseline
+    if options['game_type'] == 'majority':
+        hard_coded_baseline = EdgeConnectAgent(target_env)
+        hard_coded_baseline.setup(get_rand_options(file_paths), None)
+        baseline_2 = hard_coded_baseline.eval(test_graphs, test_set=True, baseline=True)
+        agent.update_test_history()    # Comment this line out if training
+        agent.update_test_performance(test_perf,
+                                   baseline_perf,
+                                   agent.initial_obj_values,
+                                   agent.final_obj_values,
+                                   rand_agent.final_obj_values,
+                                   baseline_2,
+                                   hard_coded_baseline.final_obj_values)
+    else:
+        # agent.update_test_history()    # Comment this line out if training
+        agent.update_test_performance(test_perf,
+                                   baseline_perf,
+                                   agent.initial_obj_values,
+                                   agent.final_obj_values,
+                                   rand_agent.final_obj_values)

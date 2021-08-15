@@ -174,16 +174,23 @@ class PyTorchAgent(Agent):
                              baseline_performance,
                              initial_obj_values,
                              final_obj_values_test,
-                             final_obj_values_baseline):
-        """
-        Only uses at the end to write the test and baselines to csv
-        """
+                             final_obj_values_baseline,
+                             baseline_2_performance=None,
+                             final_obj_values_baseline_2=None):
 
         if self.hist_out is not None:
             self.hist_out.write('Test set performance,%.6f\n' % (test_performance))
-            self.hist_out.write('Baseline test set performance,%.6f\n' % (baseline_performance))
-            for init, test, base in zip(initial_obj_values, final_obj_values_test, final_obj_values_baseline):
-                self.hist_out_raw_test.write('%.6f,%.6f,%.6f\n' % (init, test, base))
+            self.hist_out.write('Random baseline test set performance,%.6f\n' % (baseline_performance))
+            if baseline_2_performance is None:
+                for init, test, base in zip(initial_obj_values, final_obj_values_test, final_obj_values_baseline):
+                    self.hist_out_raw_test.write('%.6f,%.6f,%.6f\n' % (init, test, base))
+            else:
+                self.hist_out.write('Baseline test set performance,%.6f\n' % (baseline_2_performance))
+                for init, test, base, base2 in zip(initial_obj_values,
+                                                   final_obj_values_test,
+                                                   final_obj_values_baseline,
+                                                   final_obj_values_baseline_2):
+                    self.hist_out_raw_test.write('%.6f,%.6f,%.6f, %.6f\n' % (init, test, base, base2))
 
             try:
                 self.hist_out.flush()
@@ -191,6 +198,26 @@ class PyTorchAgent(Agent):
                 if self.logger is not None:
                     self.logger.warn("caught an exception when trying to flush evaluation history.")
                     self.logger.warn(traceback.format_exc())
+
+    def update_test_performance(self,
+                             test_performance,
+                             baseline_performance,
+                             initial_obj_values,
+                             final_obj_values_test,
+                             final_obj_values_baseline,
+                             baseline_2_performance=None,
+                             final_obj_values_baseline_2=None):
+
+        for init, test, base, base2 in zip(initial_obj_values, final_obj_values_test,
+                                           final_obj_values_baseline, final_obj_values_baseline_2):
+            self.hist_out_raw_test.write('%.6f,%.6f,%.6f, %.6f\n' % (init, test, base, base2))
+
+        try:
+            self.hist_out_raw_test.flush()
+        except BaseException:
+            if self.logger is not None:
+                self.logger.warn("caught an exception when trying to flush evaluation history.")
+                self.logger.warn(traceback.format_exc())
 
     def print_model_parameters(self):
         """
@@ -308,7 +335,6 @@ class PyTorchAgent(Agent):
         model_history.mkdir(parents=True, exist_ok=True)
 
         model_history_filename = model_history / FilePaths.construct_history_file_name('validation')
-
         # Uses Pathlib to make the path to the file
         model_history_file = Path(model_history_filename)
         # Organises the file and unlinks it from path if required
@@ -320,25 +346,30 @@ class PyTorchAgent(Agent):
 
         # Set up test and baselines
         raw_history_filename = model_history / FilePaths.construct_history_file_name('raw')
-        # Uses Pathlib to make the path to the file
         raw_history_filename = Path(raw_history_filename)
-        # Organises the file and unlinks it from path if required
         if raw_history_filename.exists():
             raw_history_filename.unlink()
-        # Open the file for output
         self.hist_out_raw = open(raw_history_filename, 'a')
         self.hist_out_raw.write('Step, Start SW, Final SW\n')
 
         # Set up test and baselines
         raw_test_history_filename = model_history / FilePaths.construct_history_file_name('test')
-        # Uses Pathlib to make the path to the file
         raw_test_history_filename = Path(raw_test_history_filename)
-        # Organises the file and unlinks it from path if required
         if raw_test_history_filename.exists():
             raw_test_history_filename.unlink()
-        # Open the file for output
         self.hist_out_raw_test = open(raw_test_history_filename, 'a')
-        self.hist_out_raw_test.write('Start SW, Test SW, Baseline SW\n')
+        self.hist_out_raw_test.write('Start SW, Test SW, Random Baseline SW, Policy Baseline\n')
+
+    def update_test_history(self):
+        self.eval_histories_path = self.models_path / FilePaths.EVAL_HISTORIES_DIR_NAME
+        model_history = self.eval_histories_path / self.model_identifier_prefix
+        model_history.mkdir(parents=True, exist_ok=True)
+        raw_test_history_filename = model_history / FilePaths.construct_history_file_name('test')
+        raw_test_history_filename = Path(raw_test_history_filename)
+        if raw_test_history_filename.exists():
+            raw_test_history_filename.unlink()
+        self.hist_out_raw_test = open(raw_test_history_filename, 'a')
+        self.hist_out_raw_test.write('Start SW, Test SW, Random Baseline SW, Policy Baseline\n')
 
     def finalize(self):
         # Closes out the hist out file for writing

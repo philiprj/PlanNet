@@ -380,6 +380,12 @@ class S2VGraph(object):
         curr_actions = deepcopy(self.actions)
         # Loop while not converged
         c = 0
+        """
+        TODO:
+        Create option for majority institution here using 'Minority Tax' idea
+        Introduce a cost of playing globally minority action in majority game
+        Tax collected can be distributed to majority agents? 
+        """
         while not equilibrium:
             # Loop through each node and get new actions
             for i in self.br_order:
