@@ -154,11 +154,9 @@ class PyTorchAgent(Agent):
         if self.hist_out is not None:
             # Write our performance to it
             self.hist_out.write('%d,%.6f\n' % (step, performance))
-
             # Get the raw values and write to csv file (step, init, final)
             for init, final in zip(self.initial_obj_values, self.final_obj_values):
                 self.hist_out_raw.write('%d,%.6f,%.6f\n' % (step, init, final))
-
             try:
                 self.hist_out.flush()
                 self.hist_out_raw.flush()
@@ -211,9 +209,18 @@ class PyTorchAgent(Agent):
         for init, test, base, base2 in zip(initial_obj_values, final_obj_values_test,
                                            final_obj_values_baseline, final_obj_values_baseline_2):
             self.hist_out_raw_test.write('%.6f,%.6f,%.6f, %.6f\n' % (init, test, base, base2))
-
         try:
             self.hist_out_raw_test.flush()
+        except BaseException:
+            if self.logger is not None:
+                self.logger.warn("caught an exception when trying to flush evaluation history.")
+                self.logger.warn(traceback.format_exc())
+
+    def log_oos_performance(self, init_obj, final_obj, n_nodes, graph_type):
+        for init, final in zip(init_obj, final_obj):
+            self.hist_out_raw_oos.write('%.6f,%.6f,%i,%s\n' % (init, final, n_nodes, graph_type))
+        try:
+            self.hist_out_raw_oos.flush()
         except BaseException:
             if self.logger is not None:
                 self.logger.warn("caught an exception when trying to flush evaluation history.")
@@ -370,6 +377,17 @@ class PyTorchAgent(Agent):
             raw_test_history_filename.unlink()
         self.hist_out_raw_test = open(raw_test_history_filename, 'a')
         self.hist_out_raw_test.write('Start SW, Test SW, Random Baseline SW, Policy Baseline\n')
+
+    def setup_out_of_sample(self):
+        self.eval_histories_path = self.models_path / FilePaths.EVAL_HISTORIES_DIR_NAME
+        model_history = self.eval_histories_path / self.model_identifier_prefix
+        model_history.mkdir(parents=True, exist_ok=True)
+        raw_oos_history_filename = model_history / FilePaths.construct_history_file_name('out_of_sample')
+        raw_oos_history_filename = Path(raw_oos_history_filename)
+        if raw_oos_history_filename.exists():
+            raw_oos_history_filename.unlink()
+        self.hist_out_raw_oos = open(raw_oos_history_filename, 'a')
+        self.hist_out_raw_oos.write('Start SW, Final SW, Nodes, Graph Type\n')
 
     def finalize(self):
         # Closes out the hist out file for writing

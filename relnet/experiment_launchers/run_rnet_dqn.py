@@ -17,11 +17,11 @@ def get_gen_params():
     # Defines the network generation parameters
     gp = {}
     # Define the type of graph
-    gp['type'] = 'er'   # ['ba', 'ws', 'er']
+    gp['type'] = 'ba'   # ['ba', 'ws', 'er']
     # Nodes
-    gp['n'] = 100
+    gp['n'] = 15
     # Parameters for Barabasi-Albert Graph
-    gp['m_ba'] = 1
+    gp['m_ba'] = 4
     # Parameters for Watts-Strogatz Graph
     gp['k_ws'], gp['p_ws'] = 2, 0.5
     # Number of edges compared to nodes
@@ -45,7 +45,7 @@ def get_identifier_prefix(gen_params, gtype):
 
 def get_options(file_paths, gen_params):
     # Defines the general options for logging/saving results
-    game_type = 'majority'  # ['majority', 'bspgg', 'pgg']
+    game_type = 'bspgg'  # ['majority', 'bspgg']
 
     options = {"log_progress": True,
                "log_filename": str(file_paths.construct_log_filepath()),
@@ -54,7 +54,7 @@ def get_options(file_paths, gen_params):
                "models_path": file_paths.models_dir,
                "game_type": game_type,
                'model_identifier_prefix': get_identifier_prefix(gen_params, game_type),
-               "restore_model": True,
+               "restore_model": False,
                "validation_check_interval": 50,
                'reward_shaping': True,
                'pytorch_full_print': False,
@@ -154,7 +154,7 @@ if __name__ == '__main__':
                                    hard_coded_baseline.final_obj_values)
     else:
         # agent.update_test_history()    # Comment this line out if training
-        agent.update_test_performance(test_perf,
+        agent.log_test_performance(test_perf,
                                    baseline_perf,
                                    agent.initial_obj_values,
                                    agent.final_obj_values,
