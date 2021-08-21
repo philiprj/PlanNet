@@ -87,9 +87,12 @@ def save_raw(game, graph, n, m):
     plt.close()
 
 
-def plot_oos(game, graph, n, m):
+def plot_oos(game, graph, n, m, curriculum=False):
     sns.set_style("darkgrid")
-    run_name = f"{game}_{graph}_{n}_{m}"
+    if curriculum:
+        run_name = f"curriculum_{game}_{graph}"
+    else:
+        run_name = f"{game}_{graph}_{n}_{m}"
     oos_path = data_root / run_name / "out_of_sample.csv"
     figure_path = figure_root / f"oos_{run_name}.png"
 
@@ -124,8 +127,7 @@ def plot_oos(game, graph, n, m):
 
 if __name__ == '__main__':
 
-
-    plot_tests(game="bspgg", graph="er", m="2")
+    # plot_tests(game="bspgg", graph="er", m="2")
     # save_raw(game="bspgg", graph="ba", n="100", m="4")
     # for n in [15, 25, 50, 100]:
-    #     plot_oos(game="bspgg", graph="ba", n=n, m=4)
+    plot_oos(game="bspgg", graph="ws", n=25, m=2, curriculum=True)

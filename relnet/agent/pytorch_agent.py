@@ -67,19 +67,12 @@ class PyTorchAgent(Agent):
         return selected_idx
 
     def save_model_checkpoints(self):
-        """
-        Saves the model parameters to the specified path
-        """
-        # I think forward slashes act like sub directories - uses pathlib library
         model_dir = self.checkpoints_path / self.model_identifier_prefix
         model_dir.mkdir(parents=True, exist_ok=True)
         model_path = model_dir / f"{self.algorithm_name}_agent.model"
         torch.save(self.net.state_dict(), model_path)
 
     def restore_model_from_checkpoint(self):
-        """
-        Restores previous model using similar approach to above
-        """
         model_path = self.checkpoints_path / self.model_identifier_prefix / f"{self.algorithm_name}_agent.model"
         checkpoint = torch.load(model_path, map_location=lambda storage, loc: storage)
         self.net.load_state_dict(checkpoint)
@@ -242,8 +235,13 @@ class PyTorchAgent(Agent):
             if self.log_progress:
                 self.logger.info("number steps exceeded or validation plateaued for too long, stopping training.")
                 self.logger.info("restoring best model to use for predictions.")
-            # Restore model
-            self.restore_model_from_checkpoint()
+
+            if self.restore_model_at_end is True:
+                # Restore model
+                self.restore_model_from_checkpoint()
+            else:
+                self.save_model_checkpoints()
+
             # If using tensorboard then close it
             if self.log_tf_summaries:
                 self.file_writer.close()
@@ -322,6 +320,10 @@ class PyTorchAgent(Agent):
                 self.tau = 0.01
         else:
             self.soft = False
+        if 'restore_end' in options:
+            self.restore_model_at_end = options['restore_end']
+        else:
+            self.restore_model_at_end = True
 
     def get_summaries_run_path(self):
         """

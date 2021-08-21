@@ -1,10 +1,7 @@
 from abc import abstractmethod, ABC
-
 import networkx as nx
 import numpy as np
-
 from relnet.agent.base_agent import Agent
-from relnet.spectral_properties import *
 
 
 class BaselineAgent(Agent, ABC):

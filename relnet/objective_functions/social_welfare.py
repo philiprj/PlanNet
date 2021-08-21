@@ -1,5 +1,3 @@
-
-
 def SocialWelfare(g):
     """
     Computes the social welfare by taking the sum of each players reward
@@ -11,3 +9,9 @@ def SocialWelfare(g):
     SW = sum(g.rewards.values()) / g.max_reward
     # Return social welfare multiplied by the reward scale
     return SW
+
+
+def MaxContribution(g):
+    # Computes number of agents playing 1, normalised by the number of agents
+    MC = len([i for i in g.node_labels if g.actions[i] == 1.]) / g.num_nodes
+    return MC

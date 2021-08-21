@@ -9,13 +9,14 @@ from relnet.state.network_generators import NetworkGenerator, BANetworkGenerator
     GNMNetworkGenerator
 from relnet.objective_functions.social_welfare import SocialWelfare
 from relnet.experiment_launchers.run_rnet_dqn import get_identifier_prefix, get_file_paths
+from relnet.experiment_launchers.curriculum_learner import curriculum_identifier_prefix
 
 
 def get_gen_params():
     # Defines the network generation parameters
     gp = {}
     # Define the type of graph
-    gp['type'] = 'ba'   # ['ba', 'ws', 'er']
+    gp['type'] = 'ws'   # ['ba', 'ws', 'er']
     # Nodes
     gp['n'] = 15
     # Parameters for Barabasi-Albert Graph
@@ -34,7 +35,7 @@ def get_options_oos(file_paths, gen_params):
     options = {"random_seed": 42,
                "models_path": file_paths.models_dir,
                "game_type": game_type,
-               'model_identifier_prefix': get_identifier_prefix(gen_params, game_type),
+               'model_identifier_prefix': curriculum_identifier_prefix(gen_params, game_type),
                "restore_model": True,
                'double': True}
     return options

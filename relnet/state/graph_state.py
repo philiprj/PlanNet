@@ -26,7 +26,7 @@ def random_action_init(g):
 
 class S2VGraph(object):
     # Takes a NetworkX graph and converts to a S2V object
-    def __init__(self, g, game_type='majority', br_order=None, enforce_connected=True):
+    def __init__(self, g, game_type='majority', br_order=None, enforce_connected=True, institution=False):
         """
         :param g: NetworkX graph
         """
@@ -48,6 +48,10 @@ class S2VGraph(object):
         self.node_degrees = np.array([deg for (node, deg) in sorted(g.degree(), key=lambda deg_pair: deg_pair[0])])
         # Init node to none
         self.first_node = None
+
+        # Flag for institution
+        self.use_inst = institution
+        self.tax = 0.2
 
         # Set bool for enforcing a connected graph when removing edges
         self.enforce_connected = enforce_connected
@@ -350,6 +354,10 @@ class S2VGraph(object):
                         len([a for a in neighbors_actions if a == act]) / len([a for a in neighbors_actions])
                 except ZeroDivisionError:
                     self.rewards[i] = 0.0
+                # If using institution then take tax from defectors
+                if self.use_inst:
+                    if act == 0.0:
+                        self.rewards[i] = self.rewards[i] - self.tax
             # Best shot public goods game
             elif self.game_type == 'bspgg':
                 # Max reward is when action is 0 otherwise is 1 - action/2 (arbitrary cost - could change later)
@@ -380,12 +388,7 @@ class S2VGraph(object):
         curr_actions = deepcopy(self.actions)
         # Loop while not converged
         c = 0
-        """
-        TODO:
-        Create option for majority institution here using 'Minority Tax' idea
-        Introduce a cost of playing globally minority action in majority game
-        Tax collected can be distributed to majority agents? 
-        """
+
         while not equilibrium:
             # Loop through each node and get new actions
             for i in self.br_order:
@@ -398,17 +401,21 @@ class S2VGraph(object):
 
                 # Select the action based on the game being played
                 if self.game_type == 'majority':
-                    # If more are playing 1 then pick 1, Otherwise pick 0
-                    if contri > defect:
-                        # Updates the S2V state and NX graph
-                        self.actions[i], g.nodes[i]['action'] = 1., 1.
-                    # If less then select less
-                    elif contri < defect:
-                        self.actions[i], g.nodes[i]['action'] = 0., 0.
-                    # If equal then random tie breaker
+                    if self.use_inst:
+                        action = self.institution(len(neighbors_actions), len(contri))
+                        self.actions[i], g.nodes[i]['action'] = action, action
                     else:
-                        self.actions[i] = random.randint(0, 1)
-                        g.nodes[i]['action'] = deepcopy(self.actions[i])
+                        # If more are playing 1 then pick 1, Otherwise pick 0
+                        if contri > defect:
+                            # Updates the S2V state and NX graph
+                            self.actions[i], g.nodes[i]['action'] = 1., 1.
+                        # If less then select less
+                        elif contri < defect:
+                            self.actions[i], g.nodes[i]['action'] = 0., 0.
+                        # If equal then random tie breaker
+                        else:
+                            self.actions[i] = random.randint(0, 1)
+                            g.nodes[i]['action'] = deepcopy(self.actions[i])
                 elif self.game_type == 'bspgg':
                     # If any neighboring agents are contributing then chose to defect
                     if 1 in neighbors_actions:
@@ -442,6 +449,21 @@ class S2VGraph(object):
         self.update_rewards(g)
         # Return the updated graph with actions and rewards
         return self.apply_actions_2_nx()
+
+    def institution(self, n_neighbours: int, n_contributors: int) -> float:
+        """
+        :param n_neighbours: int number of neighbors
+        :param n_contributors: int number of contributing neighbors
+        :param tax: float number of tax
+        :return: {1, 0} action depending on which is more valuable
+        """
+        # Get the fraction of contributing agents
+        c_reward = n_contributors / n_neighbours
+        d_reward = 1 - c_reward - self.tax
+        if c_reward > d_reward:
+            return 1.
+        else:
+            return 0.
 
     def randomise_actions(self):
         # Takes the graph structure and applies random actions again - initialising a new S2V state object
