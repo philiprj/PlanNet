@@ -13,5 +13,5 @@ def SocialWelfare(g):
 
 def MaxContribution(g):
     # Computes number of agents playing 1, normalised by the number of agents
-    MC = len([i for i in g.node_labels if g.actions[i] == 1.]) / g.num_nodes
+    MC = sum(g.actions.values()) / g.max_reward
     return MC

@@ -51,7 +51,7 @@ class S2VGraph(object):
 
         # Flag for institution
         self.use_inst = institution
-        self.tax = 0.2
+        self.tax = 0.05
 
         # Set bool for enforcing a connected graph when removing edges
         self.enforce_connected = enforce_connected
@@ -100,7 +100,8 @@ class S2VGraph(object):
         s2v_graph = S2VGraph(nx_graph,
                              game_type=self.game_type,
                              br_order=self.br_order,
-                             enforce_connected=self.enforce_connected)
+                             enforce_connected=self.enforce_connected,
+                             institution=self.use_inst)
         return s2v_graph, 1
 
     def populate_banned_actions(self, budget=None, action=None):
@@ -185,7 +186,8 @@ class S2VGraph(object):
         s2v_graph = S2VGraph(nx_graph,
                              game_type=self.game_type,
                              br_order=self.br_order,
-                             enforce_connected=self.enforce_connected)
+                             enforce_connected=self.enforce_connected,
+                             institution=self.use_inst)
         return s2v_graph, 1
 
     def flip_node(self, first_node, second_node=None):
@@ -205,7 +207,8 @@ class S2VGraph(object):
         s2v_graph = S2VGraph(nx_graph,
                              game_type=self.game_type,
                              br_order=self.br_order,
-                             enforce_connected=self.enforce_connected,)
+                             enforce_connected=self.enforce_connected,
+                             institution=self.use_inst)
         return s2v_graph, 1
 
     def invalid_first_node_removal(self, budget):
@@ -402,7 +405,7 @@ class S2VGraph(object):
                 # Select the action based on the game being played
                 if self.game_type == 'majority':
                     if self.use_inst:
-                        action = self.institution(len(neighbors_actions), len(contri))
+                        action = self.institution(len(neighbors_actions), contri)
                         self.actions[i], g.nodes[i]['action'] = action, action
                     else:
                         # If more are playing 1 then pick 1, Otherwise pick 0
@@ -472,7 +475,8 @@ class S2VGraph(object):
         s2v_graph = S2VGraph(nx_graph,
                              game_type=self.game_type,
                              br_order=self.br_order,
-                             enforce_connected=self.enforce_connected)
+                             enforce_connected=self.enforce_connected,
+                             institution=self.use_inst)
         return s2v_graph
 
     def copy(self):

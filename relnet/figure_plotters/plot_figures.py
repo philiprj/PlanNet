@@ -125,9 +125,60 @@ def plot_oos(game, graph, n, m, curriculum=False):
     plt.close()
 
 
+def institution_plot(graph='ws', m=2):
+
+    sns.set_style("darkgrid")
+    figure_path = figure_root / f"Institution_{graph}.png"
+    headers = ['BR', 'PlanNet', 'rand_end', 'policy_end']
+    tax_vals = []
+    for t in ['0.0', '0.1', '0.2']:
+        node_vals = []
+        for n in [15, 25, 50]:
+            run_name_inst = f"MaxContribution_institution_{graph}_{n}_{m}_{t}"
+            inst_path = data_root / run_name_inst / "test.csv"
+            if inst_path.exists():
+                df = pd.read_csv(inst_path, index_col=None, names=headers, skiprows=1)
+                df['n_nodes'] = [n] * df.shape[0]
+                node_vals.append(df)
+            else:
+                raise BaseException("No such file in directory")
+        df = pd.concat(node_vals, axis=0, ignore_index=True)
+        df['tax'] = [t] * df.shape[0]
+        tax_vals.append(df)
+
+    df = pd.concat(tax_vals, axis=0, ignore_index=True)
+    del df['policy_end']
+    del df['rand_end']
+    df = pd.melt(df,
+                 id_vars=['n_nodes', 'tax'],
+                 value_vars=['BR', 'PlanNet'],
+                 var_name='BR / PlanNet',
+                 value_name='Objective')
+
+    g = sns.lineplot(data=df,
+                     x="n_nodes",
+                     y="Objective",
+                     hue='tax',
+                     style='BR / PlanNet',
+                     style_order=['PlanNet', 'BR'],
+                     ci=90,
+                     legend='brief',
+                     palette=sns.color_palette(palette=None, n_colors=df.tax.nunique()))
+
+    g.set(xlim=(min(df['n_nodes']), max(df['n_nodes'])))
+    plt.title("Test Set Performance")
+    plt.xlabel('Number of nodes')
+    plt.ylabel('Test Set Fraction of Conforming Agents')
+    g.set(ylim=(0.1, 1.005))
+    plt.legend(loc='lower right', prop={'size': 8})
+    plt.savefig(figure_path)
+    plt.close()
+
+
 if __name__ == '__main__':
 
     # plot_tests(game="bspgg", graph="er", m="2")
     # save_raw(game="bspgg", graph="ba", n="100", m="4")
     # for n in [15, 25, 50, 100]:
-    plot_oos(game="bspgg", graph="ws", n=25, m=2, curriculum=True)
+    # plot_oos(game="bspgg", graph="ws", n=25, m=2, curriculum=True)
+    institution_plot(graph='ws', m=2)

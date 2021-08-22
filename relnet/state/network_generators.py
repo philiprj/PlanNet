@@ -20,7 +20,8 @@ class NetworkGenerator(ABC):
                  graph_storage_root=None,
                  logs_file=None,
                  game_type='majority',
-                 enforce_connected=True):
+                 enforce_connected=True,
+                 institution=False):
         """
         :param store_graphs: Bool - Stores the generated graph instances
         :param graph_storage_root: Path for storing the graphs
@@ -42,6 +43,7 @@ class NetworkGenerator(ABC):
         # Set the game type
         self.game_type = game_type
         self.enforce_connected = enforce_connected
+        self.use_inst = institution
 
     def generate(self, gen_params, random_seed):
         """
@@ -158,7 +160,8 @@ class OrdinaryGraphGenerator(NetworkGenerator, ABC):
         """
         state = S2VGraph(instance,
                          self.game_type,
-                         enforce_connected=self.enforce_connected)
+                         enforce_connected=self.enforce_connected,
+                         institution=self.use_inst)
         # Builds a list of banned actions for the graph for quick access
         state.populate_banned_actions()
         return state
