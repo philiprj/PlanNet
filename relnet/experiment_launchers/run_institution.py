@@ -40,7 +40,7 @@ def institution_get_identifier_prefix(gen_params, institution):
     else:
         m = gen_params['m']
     if institution:
-        return f"MaxContribution_institution_{gen_params['type']}_{gen_params['n']}_{m}_0.05"
+        return f"MaxContribution_institution_{gen_params['type']}_{gen_params['n']}_{m}_0.001"
     else:
         return f"MaxContribution_institution_{gen_params['type']}_{gen_params['n']}_{m}_0.0"
 
@@ -70,13 +70,13 @@ def get_options(file_paths, gen_params):
 
 
 if __name__ == '__main__':
-    for n in [15, 25, 50, 100]:
-        num_training_steps = 750
+
+    for n in [15, 25, 50]:
+        num_training_steps = 900
         num_train_graphs = 1000
         num_validation_graphs = 100
         num_test_graphs = 100
         gen_params = get_gen_params()
-        # Update gen_params with n
         gen_params['n'] = n
 
         file_paths = get_file_paths()

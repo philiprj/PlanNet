@@ -51,7 +51,7 @@ class S2VGraph(object):
 
         # Flag for institution
         self.use_inst = institution
-        self.tax = 0.05
+        self.tax = 0.001
 
         # Set bool for enforcing a connected graph when removing edges
         self.enforce_connected = enforce_connected
