@@ -1,5 +1,5 @@
-# relnet
-A framework for graph construction using reinforcement learning.
+# PlanNet
+A framework for network game alterations using reinforcement learning.
 
 ## Prerequisites
 Currently supported on macOS and Linux (tested on CentOS 7.4.1708, but should work out of the box on any standard Linux distro), as well as on Windows via [WSL](https://docs.microsoft.com/en-us/windows/wsl/install-win10).
