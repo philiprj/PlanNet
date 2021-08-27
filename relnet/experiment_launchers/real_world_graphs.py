@@ -96,7 +96,7 @@ if __name__ == '__main__':
 
             # Saw mill model
             agent.model_identifier_prefix = \
-                f"saw_mill_{gen_params['n']}_{gen_params['m']}_{gen_params['m']}_{gen_params['type']}_{gen_params['t']}"
+                f"saw_mill_{gen_params['n']}_{gen_params['m']}_{gen_params['type']}_{gen_params['t']}"
             agent.update_test_history()
             test_perf = agent.eval(test_graphs_saw, test_set=True)
             rand_agent = RandomAgent(target_env)
