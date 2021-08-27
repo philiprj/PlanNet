@@ -128,11 +128,11 @@ def plot_oos(game, graph, n, m, curriculum=False):
 def institution_plot(graph='ws', m=2):
 
     sns.set_style("darkgrid")
-    figure_path = figure_root / f"Institution_{graph}.png"
+    figure_path = figure_root / f"Institution_{graph}_{m}.png"
     headers = ['BR', 'PlanNet', 'rand_end', 'policy_end']
     tax_vals = []
     # for t in ['0.0', '0.01', '0.05', '0.1', '0.2']:
-    for t in ['0.0', '0.01', '0.1', '0.2']:
+    for t in ['0.0', '0.001', '0.2']:
         node_vals = []
         for n in [15, 25, 50]:
             run_name_inst = f"MaxContribution_institution_{graph}_{n}_{m}_{t}"
@@ -181,5 +181,5 @@ if __name__ == '__main__':
     # plot_tests(game="bspgg", graph="er", m="2")
     # save_raw(game="bspgg", graph="ba", n="100", m="4")
     # for n in [15, 25, 50, 100]:
-    # plot_oos(game="bspgg", graph="ws", n=25, m=2, curriculum=True)
-    institution_plot(graph='ba', m=1)
+    plot_oos(game="majority", graph="ba", n=15, m=1, curriculum=True)
+    # institution_plot(graph='ba', m=3)

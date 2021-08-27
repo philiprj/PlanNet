@@ -17,17 +17,18 @@ def get_gen_params():
     # Defines the network generation parameters
     gp = {}
     # Define the type of graph
-    gp['type'] = 'ws'   # ['ba', 'ws', 'er']
+    gp['type'] = 'ba'   # ['ba', 'ws', 'er']
     # Nodes
     gp['n'] = 25
     # Parameters for Barabasi-Albert Graph
-    gp['m_ba'] = 1
+    gp['m_ba'] = 3
     # Parameters for Watts-Strogatz Graph
     gp['k_ws'], gp['p_ws'] = 2, 0.5
     # Number of edges compared to nodes
     gp['m_percentage_er'] = 3
     # gp['m'] = NetworkGenerator.compute_number_edges(gp['n'], gp['m_percentage_er'])
     gp['m'] = 149
+    gp['t'] = 0.0
     return gp
 
 
@@ -39,8 +40,10 @@ def institution_get_identifier_prefix(gen_params, institution):
         m = gen_params['k_ws']
     else:
         m = gen_params['m']
+
+    t = gen_params['t']
     if institution:
-        return f"MaxContribution_institution_{gen_params['type']}_{gen_params['n']}_{m}_0.001"
+        return f"MaxContribution_institution_{gen_params['type']}_{gen_params['n']}_{m}_{t}"
     else:
         return f"MaxContribution_institution_{gen_params['type']}_{gen_params['n']}_{m}_0.0"
 
@@ -71,48 +74,57 @@ def get_options(file_paths, gen_params):
 
 if __name__ == '__main__':
 
-    for n in [15, 25, 50]:
-        num_training_steps = 900
-        num_train_graphs = 1000
-        num_validation_graphs = 100
-        num_test_graphs = 100
-        gen_params = get_gen_params()
-        gen_params['n'] = n
+    for t in [0.001]:
+        for n in [25]:
+            num_training_steps = 750
+            num_train_graphs = 1000
+            num_validation_graphs = 100
+            num_test_graphs = 100
+            gen_params = get_gen_params()
+            gen_params['n'] = n
+            gen_params['t'] = t
 
-        file_paths = get_file_paths()
-        options = get_options(file_paths, gen_params)
-        storage_root = Path('/experiment_data/stored_graphs')
-        original_dataset_dir = Path('/experiment_data/real_world_graphs/processed_data')
-        kwargs = {'store_graphs': True,
-                  'graph_storage_root': storage_root,
-                  'game_type': options["game_type"],
-                  'enforce_connected': True,
-                  'institution': options['institution']}
-        if gen_params['type'] == 'ba':
-            gen = BANetworkGenerator(**kwargs)
-        elif gen_params['type'] == 'ws':
-            gen = WSNetworkGenerator(**kwargs)
-        elif gen_params['type'] == 'er':
-            gen = GNMNetworkGenerator(**kwargs)
-        train_graph_seeds, validation_graph_seeds, test_graph_seeds = \
-            NetworkGenerator.construct_network_seeds(num_train_graphs, num_validation_graphs, num_test_graphs)
-        train_graphs = gen.generate_many(gen_params, train_graph_seeds)
-        validation_graphs = gen.generate_many(gen_params, validation_graph_seeds)
-        test_graphs = gen.generate_many(gen_params, test_graph_seeds)
-        edge_percentage = 10.0
-        # Here we change the object to maximise contributing agents, rather than social welfare.
-        target_env = GraphEdgeEnv(MaxContribution, edge_percentage)
-        agent = RNetDQNAgent(target_env)
-        agent.setup(options, agent.get_default_hyperparameters())
-        agent.train(train_graphs, validation_graphs, num_training_steps)
-        test_perf = agent.eval(test_graphs, test_set=True)
-        # Compare to the random baseline
-        rand_agent = RandomAgent(target_env)
-        rand_agent.setup(get_rand_options(file_paths), None)
-        baseline_perf = rand_agent.eval(test_graphs, test_set=True, baseline=True)
-        # Log raw results
-        agent.log_test_performance(test_perf,
-                                   baseline_perf,
-                                   agent.initial_obj_values,
-                                   agent.final_obj_values,
-                                   rand_agent.final_obj_values)
+            file_paths = get_file_paths()
+            options = get_options(file_paths, gen_params)
+            storage_root = Path('/experiment_data/stored_graphs')
+            original_dataset_dir = Path('/experiment_data/real_world_graphs/processed_data')
+            kwargs = {'store_graphs': True,
+                      'graph_storage_root': storage_root,
+                      'game_type': options["game_type"],
+                      'enforce_connected': True,
+                      'institution': options['institution'],
+                      'tax': t}
+            if gen_params['type'] == 'ba':
+                gen = BANetworkGenerator(**kwargs)
+            elif gen_params['type'] == 'ws':
+                gen = WSNetworkGenerator(**kwargs)
+            elif gen_params['type'] == 'er':
+                gen = GNMNetworkGenerator(**kwargs)
+            train_graph_seeds, validation_graph_seeds, test_graph_seeds = \
+                NetworkGenerator.construct_network_seeds(num_train_graphs, num_validation_graphs, num_test_graphs)
+
+            train_graphs = gen.generate_many(gen_params, train_graph_seeds)
+            validation_graphs = gen.generate_many(gen_params, validation_graph_seeds)
+
+            test_graphs = gen.generate_many(gen_params, test_graph_seeds)
+            edge_percentage = 10.0
+            # Here we change the object to maximise contributing agents, rather than social welfare.
+            target_env = GraphEdgeEnv(MaxContribution, edge_percentage)
+            agent = RNetDQNAgent(target_env)
+            agent.setup(options, agent.get_default_hyperparameters())
+
+            # If not training comment out and just set up test history file
+            agent.train(train_graphs, validation_graphs, num_training_steps)
+            # agent.update_test_history()
+
+            test_perf = agent.eval(test_graphs, test_set=True)
+            # Compare to the random baseline
+            rand_agent = RandomAgent(target_env)
+            rand_agent.setup(get_rand_options(file_paths), None)
+            baseline_perf = rand_agent.eval(test_graphs, test_set=True, baseline=True)
+            # Log raw results
+            agent.log_test_performance(test_perf,
+                                       baseline_perf,
+                                       agent.initial_obj_values,
+                                       agent.final_obj_values,
+                                       rand_agent.final_obj_values)

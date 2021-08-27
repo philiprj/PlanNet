@@ -89,7 +89,6 @@ class RNetDQNAgent(PyTorchAgent):
             list_rt: reward received after action selected - 0 if non-terminal 
             list_s_primes: s' - graph state after selected action - includes None states? 
             list_term: list of terminal state where no reward if received
-            TODO: check the sampling - should be sampling all the same type? 
             """
             cur_time, list_st, list_at, list_rt, list_s_primes, list_term = \
                 self.mem_pool.sample(batch_size=self.batch_size)

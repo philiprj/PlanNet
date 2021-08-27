@@ -26,7 +26,7 @@ def random_action_init(g):
 
 class S2VGraph(object):
     # Takes a NetworkX graph and converts to a S2V object
-    def __init__(self, g, game_type='majority', br_order=None, enforce_connected=True, institution=False):
+    def __init__(self, g, game_type='majority', br_order=None, enforce_connected=True, institution=False, tax=0.1):
         """
         :param g: NetworkX graph
         """
@@ -51,7 +51,7 @@ class S2VGraph(object):
 
         # Flag for institution
         self.use_inst = institution
-        self.tax = 0.001
+        self.tax = tax
 
         # Set bool for enforcing a connected graph when removing edges
         self.enforce_connected = enforce_connected
@@ -101,7 +101,8 @@ class S2VGraph(object):
                              game_type=self.game_type,
                              br_order=self.br_order,
                              enforce_connected=self.enforce_connected,
-                             institution=self.use_inst)
+                             institution=self.use_inst,
+                             tax=self.tax)
         return s2v_graph, 1
 
     def populate_banned_actions(self, budget=None, action=None):
@@ -187,7 +188,8 @@ class S2VGraph(object):
                              game_type=self.game_type,
                              br_order=self.br_order,
                              enforce_connected=self.enforce_connected,
-                             institution=self.use_inst)
+                             institution=self.use_inst,
+                             tax=self.tax)
         return s2v_graph, 1
 
     def flip_node(self, first_node, second_node=None):
@@ -208,7 +210,8 @@ class S2VGraph(object):
                              game_type=self.game_type,
                              br_order=self.br_order,
                              enforce_connected=self.enforce_connected,
-                             institution=self.use_inst)
+                             institution=self.use_inst,
+                             tax=self.tax)
         return s2v_graph, 1
 
     def invalid_first_node_removal(self, budget):
@@ -465,8 +468,10 @@ class S2VGraph(object):
         d_reward = 1 - c_reward - self.tax
         if c_reward > d_reward:
             return 1.
-        else:
+        elif c_reward < d_reward:
             return 0.
+        else:
+            return random.randint(0, 1)
 
     def randomise_actions(self):
         # Takes the graph structure and applies random actions again - initialising a new S2V state object
@@ -476,7 +481,8 @@ class S2VGraph(object):
                              game_type=self.game_type,
                              br_order=self.br_order,
                              enforce_connected=self.enforce_connected,
-                             institution=self.use_inst)
+                             institution=self.use_inst,
+                             tax=self.tax)
         return s2v_graph
 
     def copy(self):

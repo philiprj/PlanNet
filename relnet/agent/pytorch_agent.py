@@ -172,6 +172,14 @@ class PyTorchAgent(Agent):
         if self.hist_out is not None:
             self.hist_out.write('Test set performance,%.6f\n' % (test_performance))
             self.hist_out.write('Random baseline test set performance,%.6f\n' % (baseline_performance))
+            try:
+                self.hist_out.flush()
+            except BaseException:
+                if self.logger is not None:
+                    self.logger.warn("caught an exception when trying to flush evaluation history.")
+                    self.logger.warn(traceback.format_exc())
+
+        if self.hist_out_raw_test is not None:
             if baseline_2_performance is None:
                 for init, test, base in zip(initial_obj_values, final_obj_values_test, final_obj_values_baseline):
                     self.hist_out_raw_test.write('%.6f,%.6f,%.6f\n' % (init, test, base))
@@ -182,13 +190,6 @@ class PyTorchAgent(Agent):
                                                    final_obj_values_baseline,
                                                    final_obj_values_baseline_2):
                     self.hist_out_raw_test.write('%.6f,%.6f,%.6f, %.6f\n' % (init, test, base, base2))
-
-            try:
-                self.hist_out.flush()
-            except BaseException:
-                if self.logger is not None:
-                    self.logger.warn("caught an exception when trying to flush evaluation history.")
-                    self.logger.warn(traceback.format_exc())
 
     def update_test_performance(self,
                              test_performance,

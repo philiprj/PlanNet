@@ -16,11 +16,11 @@ def get_gen_params():
     # Defines the network generation parameters
     gp = {}
     # Define the type of graph
-    gp['type'] = 'ws'   # ['ba', 'ws', 'er']
+    gp['type'] = 'ba'   # ['ba', 'ws', 'er']
     # Nodes
     gp['n'] = 15
     # Parameters for Barabasi-Albert Graph
-    gp['m_ba'] = 4
+    gp['m_ba'] = 1
     # Parameters for Watts-Strogatz Graph
     gp['k_ws'], gp['p_ws'] = 4, 0.5
     # Number of edges compared to nodes
@@ -30,7 +30,7 @@ def get_gen_params():
 
 
 def get_options_oos(file_paths, gen_params):
-    game_type = 'bspgg'  # ['majority', 'bspgg']
+    game_type = 'majority'  # ['majority', 'bspgg']
 
     options = {"random_seed": 42,
                "models_path": file_paths.models_dir,
