@@ -288,7 +288,9 @@ class S2VGraph(object):
             nx_graph = self.apply_actions_2_nx(nx_graph)
             label_dict = deepcopy(self.actions)
             # nx.draw_shell(nx_graph, labels=label_dict, with_labels=True, ax=ax, font_weight='bold')
-            nx.draw(nx_graph, labels=label_dict, with_labels=True, ax=ax, font_weight='bold')
+            # nx.draw(nx_graph, labels=label_dict, with_labels=True, ax=ax, font_weight='bold')
+            my_pos = nx.spring_layout(nx_graph, seed=42)
+            nx.draw(nx_graph, pos=my_pos, labels=label_dict, with_labels=True, ax=ax, font_weight='bold')
 
     def draw_to_file(self, filename, display_actions=True):
         # Draws and saves to file

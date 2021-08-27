@@ -125,17 +125,28 @@ def plot_oos(game, graph, n, m, curriculum=False):
     plt.close()
 
 
-def institution_plot(graph='ws', m=2):
+def institution_plot(graph='ws', m=2, real_world=None):
 
     sns.set_style("darkgrid")
-    figure_path = figure_root / f"Institution_{graph}_{m}.png"
+    if real_world is None:
+        figure_path = figure_root / f"Institution_{graph}_{m}.png"
+    elif real_world == 'karate':
+        figure_path = figure_root / f"Institution_karate_{graph}_{m}.png"
+    else:
+        figure_path = figure_root / f"Institution_saw_mill_{graph}_{m}.png"
+
     headers = ['BR', 'PlanNet', 'rand_end', 'policy_end']
     tax_vals = []
-    # for t in ['0.0', '0.01', '0.05', '0.1', '0.2']:
-    for t in ['0.0', '0.001', '0.2']:
+    for t in ['0.0', '0.001', '0.1', '0.2']:
         node_vals = []
         for n in [15, 25, 50]:
-            run_name_inst = f"MaxContribution_institution_{graph}_{n}_{m}_{t}"
+            if real_world is None:
+                run_name_inst = f"MaxContribution_institution_{graph}_{n}_{m}_{t}"
+            elif real_world == 'karate':
+                run_name_inst = f"karate_{n}_{m}_{graph}_{t}"
+            else:
+                run_name_inst = f"saw_mill_{n}_{m}_{graph}_{t}"
+
             inst_path = data_root / run_name_inst / "test.csv"
             if inst_path.exists():
                 df = pd.read_csv(inst_path, index_col=None, names=headers, skiprows=1)
@@ -181,5 +192,5 @@ if __name__ == '__main__':
     # plot_tests(game="bspgg", graph="er", m="2")
     # save_raw(game="bspgg", graph="ba", n="100", m="4")
     # for n in [15, 25, 50, 100]:
-    plot_oos(game="majority", graph="ba", n=15, m=1, curriculum=True)
-    # institution_plot(graph='ba', m=3)
+    # plot_oos(game="majority", graph="ba", n=15, m=1, curriculum=True)
+    institution_plot(graph='ws', m=2, real_world='karate')

@@ -283,3 +283,45 @@ class WSNetworkGenerator(OrdinaryGraphGenerator):
         n, k, p = gen_params['n'], gen_params['k_ws'], gen_params['p_ws']
         filename = f"{n}-{k}-{p}-{random_seed}.png"
         return filename
+
+
+class KarateClub(OrdinaryGraphGenerator):
+    name = 'karate_club'
+
+    def generate_instance(self, gen_params, random_seed):
+        g = nx.karate_club_graph()
+        g = random_action_init(g)
+        return g
+
+    @staticmethod
+    def get_data_filename(gen_params, random_seed):
+        filename = f"karate_club_{random_seed}.graphml"
+        return filename
+
+    @staticmethod
+    def get_drawing_filename(gen_params, random_seed):
+        filename = f"karate_club_{random_seed}.png"
+        return filename
+
+
+class SawMill(OrdinaryGraphGenerator):
+    name = 'saw_mill'
+
+    def generate_instance(self, gen_params, random_seed):
+        path = Path('/experiment_data/real_world_graphs/raw_data/Sawmill.net')
+        g = nx.read_pajek(path)
+        g = nx.Graph(g)
+        g = nx.convert_node_labels_to_integers(g)
+        g = random_action_init(g)
+        return g
+
+    @staticmethod
+    def get_data_filename(gen_params, random_seed):
+        filename = f"saw_mill_{random_seed}.graphml"
+        return filename
+
+    @staticmethod
+    def get_drawing_filename(gen_params, random_seed):
+        filename = f"saw_mill_{random_seed}.png"
+        return filename
+
