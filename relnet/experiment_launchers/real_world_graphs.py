@@ -13,7 +13,7 @@ from relnet.experiment_launchers.run_institution import institution_get_identifi
 
 def get_gen_params():
     gp = {}
-    gp['type'] = 'ws'   # ['ba', 'ws', 'er']
+    gp['type'] = 'ba'   # ['ba', 'ws', 'er']
     gp['n'] = 15
     gp['m_ba'] = 1
     gp['k_ws'], gp['p_ws'] = 2, 0.5
