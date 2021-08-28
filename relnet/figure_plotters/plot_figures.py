@@ -192,5 +192,5 @@ if __name__ == '__main__':
     # plot_tests(game="bspgg", graph="er", m="2")
     # save_raw(game="bspgg", graph="ba", n="100", m="4")
     # for n in [15, 25, 50, 100]:
-    # plot_oos(game="majority", graph="ba", n=15, m=1, curriculum=True)
-    institution_plot(graph='ba', m=1, real_world='karate')
+    plot_oos(game="bspgg", graph="ba", n=15, m=4, curriculum=True)
+    # institution_plot(graph='ba', m=1, real_world='karate')

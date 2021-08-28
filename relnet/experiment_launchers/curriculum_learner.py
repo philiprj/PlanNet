@@ -18,9 +18,9 @@ def get_curriculum_gen_params():
     # Nodes
     gp['n'] = 15
     # Parameters for Barabasi-Albert Graph
-    gp['m_ba'] = 1
+    gp['m_ba'] = 4
     # Parameters for Watts-Strogatz Graph
-    gp['k_ws'], gp['p_ws'] = 2, 0.5
+    gp['k_ws'], gp['p_ws'] = 4, 0.5
     # Number of edges compared to nodes
     gp['m_percentage_er'] = 3
     # gp['m'] = NetworkGenerator.compute_number_edges(gp['n'], gp['m_percentage_er'])
@@ -35,7 +35,7 @@ def curriculum_identifier_prefix(gen_params, gtype):
 
 def get_options(file_paths, gen_params):
 
-    game_type = 'majority'  # ['majority', 'bspgg']
+    game_type = 'bspgg'  # ['majority', 'bspgg']
     options = {"log_progress": True,
                "log_filename": str(file_paths.construct_log_filepath()),
                "log_tf_summaries": True,
@@ -60,7 +60,7 @@ if __name__ == '__main__':
     This file only runs training of agent using curriculum learning - 
     Testing is performed in out of sample file 
     """
-    num_training_steps = 750
+    num_training_steps = 1000
     num_train_graphs = 1000
     num_validation_graphs = 100
     num_test_graphs = 100
