@@ -48,7 +48,10 @@ if __name__ == '__main__':
     storage_root = Path('/experiment_data/stored_graphs')
     original_dataset_dir = Path('/experiment_data/real_world_graphs/processed_data')
 
-    for N in [15, 25, 50, 100]:
+    p_er_bspgg = [0.2, 0.15, 0.1, 0.05]
+    p_er_maj = [0.1, 0.05, 0.02, 0.005]
+
+    for N in [15, 50, 100]:
         gen_params['n'] = N
         options = get_options_oos(file_paths, gen_params)
         kwargs = {'store_graphs': True,
@@ -62,7 +65,6 @@ if __name__ == '__main__':
         agent.setup(options, agent.get_default_hyperparameters())
         # Set up logging system for test sets
         agent.setup_out_of_sample()
-        er_m = [[19, 39, 62, 149], [21, 60, 123, 248]]
         for g in ['ba', 'ws', 'er']:
             for i, n in enumerate([15, 25, 50, 100]):
                 gen_params_copy = deepcopy(gen_params)
@@ -82,9 +84,9 @@ if __name__ == '__main__':
                     gen = WSNetworkGenerator(**kwargs)
                 else:
                     if options["game_type"] == 'majority':
-                        gen_params_copy['m'] = er_m[0][i]
+                        gen_params_copy['m'] = 0.1
                     else:
-                        gen_params_copy['m'] = er_m[1][i]
+                        gen_params_copy['m'] = 0.3
                     gen = GNMNetworkGenerator(**kwargs)
                 # Set up new graphs and test
                 test_graphs = gen.generate_many(gen_params_copy, test_graph_seeds)

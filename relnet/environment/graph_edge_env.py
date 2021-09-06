@@ -1,6 +1,7 @@
 from copy import deepcopy
 import numpy as np
 from relnet.state.network_generators import NetworkGenerator, random_action_init
+from scipy import stats
 
 
 class GraphEdgeEnv(object):
@@ -159,6 +160,8 @@ class GraphEdgeEnv(object):
             else:
                 m = g.num_edges
                 edge_budgets[i] = NetworkGenerator.compute_edges_changes(m, edge_budget_percentage)
+        mo = stats.mode(edge_budgets)
+        edge_budgets = np.where(edge_budgets != mo[0], mo[0], edge_budgets)
         # Return budget for each graph
         return edge_budgets
 

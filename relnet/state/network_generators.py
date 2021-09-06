@@ -186,17 +186,18 @@ class GNMNetworkGenerator(OrdinaryGraphGenerator):
         """
         # Get edges and vertices from parameters
         number_vertices = gen_params['n']
-        number_edges = gen_params['m']
+        p = gen_params['er_p']
         # If we can have disconnections then simply generate the required networks
         if not self.enforce_connected:
-            random_graph = nx.generators.random_graphs.gnm_random_graph(number_vertices, number_edges, seed=random_seed)
+            random_graph = nx.generators.random_graphs.fast_gnp_random_graph(number_vertices, p, seed=random_seed)
             return random_action_init(random_graph)
         # Otherwise attempt to make graphs with no breaks, abort if break and try again
         else:
             for try_num in range(0, self.num_tries):
-                random_graph = nx.generators.random_graphs.gnm_random_graph(number_vertices,
-                                                                            number_edges,
-                                                                            seed=(random_seed + (try_num * 1000)))
+                random_graph = \
+                    nx.generators.random_graphs.fast_gnp_random_graph(number_vertices,
+                                                                      p,
+                                                                      seed=(random_seed + (try_num * 1000)))
                 if nx.is_connected(random_graph):
                     return random_action_init(random_graph)
                 else:
@@ -206,14 +207,14 @@ class GNMNetworkGenerator(OrdinaryGraphGenerator):
     @staticmethod
     def get_data_filename(gen_params, random_seed):
         # Creates a file name from the parameters used
-        n, m = gen_params['n'], gen_params['m']
+        n, m = gen_params['n'], gen_params['er_p']
         filename = f"{n}-{m}-{random_seed}.graphml"
         return filename
 
     @staticmethod
     def get_drawing_filename(gen_params, random_seed):
         # Creates a drawing file name from the parameters used
-        n, m = gen_params['n'], gen_params['m']
+        n, m = gen_params['n'], gen_params['er_p']
         filename = f"{n}-{m}-{random_seed}.png"
         return filename
 

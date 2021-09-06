@@ -1,6 +1,7 @@
 import math
 from copy import deepcopy
 import networkx as nx
+from networkx.algorithms.connectivity import is_locally_k_edge_connected, is_k_edge_connected
 import random
 import numpy as np
 import xxhash
@@ -221,11 +222,23 @@ class S2VGraph(object):
         """
         # If we are enforcing connection then remove nodes with only one edge, or connected to nodes with 1 edge
         if self.enforce_connected:
-            invalid = set([node_id for node_id in self.node_labels if self.node_degrees[node_id] == 1])
-            valid = self.all_nodes_set - invalid
-            # Update list to include ids with no valid end nodes
-            invalid.update([node_id for node_id in valid if len(self.invalid_edge_ends_removal(node_id)) == self.num_nodes])
-        # Otherwise just add elements with no edge
+            # invalid = set([node_id for node_id in self.node_labels if self.node_degrees[node_id] == 1])
+            # valid = self.all_nodes_set - invalid
+            # # Update list to include ids with no valid end nodes
+            # invalid.update([node_id for node_id in valid if len(self.invalid_edge_ends_removal(node_id)) == self.num_nodes])
+
+            existing_edges = self.edge_pairs.reshape(-1, 2)
+            g = self.to_networkx()
+            # Get a set of valid nodes for removal
+            valid = set()
+            for i in range(existing_edges.shape[0]):
+                s, t = existing_edges[i, 0], existing_edges[i, 1]
+                if (s in valid) and (t in valid):
+                    continue
+                elif is_locally_k_edge_connected(g, s, t, k=2):
+                    valid.update([s, t])
+            invalid = self.all_nodes_set - valid
+            return invalid
         else:
             invalid = set([node_id for node_id in self.node_labels if self.node_degrees[node_id] == 0])
         return invalid
@@ -237,20 +250,22 @@ class S2VGraph(object):
         :return: Set of invalid nodes to connect the first node to
         """
         # Create set of invalid nodes and add current 1st node to it
-        results = set()
+        valid = set()
         # Reshape node list into array
         existing_edges = self.edge_pairs.reshape(-1, 2)
         # Add the connected nodes to the set of available nodes
         existing_left = existing_edges[existing_edges[:, 0] == query_node]
-        results.update(np.ravel(existing_left[:, 1]))
+        valid.update(np.ravel(existing_left[:, 1]))
         existing_right = existing_edges[existing_edges[:, 1] == query_node]
-        results.update(np.ravel(existing_right[:, 0]))
-        results = self.all_nodes_set - results
+        valid.update(np.ravel(existing_right[:, 0]))
+        results = self.all_nodes_set - valid
         results.add(query_node)
 
         if self.enforce_connected:
             # Don't remove node if would disconnect from the graph
-            results.update([node_id for node_id in self.node_labels if self.node_degrees[node_id] == 1])
+            # results.update([node_id for node_id in self.node_labels if self.node_degrees[node_id] == 1])
+            g = self.to_networkx()
+            results.update([node for node in valid if not is_locally_k_edge_connected(g, query_node, node, k=2)])
         return results
 
     def to_networkx(self):

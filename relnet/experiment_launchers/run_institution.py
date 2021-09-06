@@ -17,13 +17,13 @@ def get_gen_params():
     # Defines the network generation parameters
     gp = {}
     # Define the type of graph
-    gp['type'] = 'ba'   # ['ba', 'ws', 'er']
+    gp['type'] = 'ws'   # ['ba', 'ws', 'er']
     # Nodes
     gp['n'] = 25
     # Parameters for Barabasi-Albert Graph
     gp['m_ba'] = 3
     # Parameters for Watts-Strogatz Graph
-    gp['k_ws'], gp['p_ws'] = 2, 0.5
+    gp['k_ws'], gp['p_ws'] = 4, 0.5
     # Number of edges compared to nodes
     gp['m_percentage_er'] = 3
     # gp['m'] = NetworkGenerator.compute_number_edges(gp['n'], gp['m_percentage_er'])
@@ -74,9 +74,9 @@ def get_options(file_paths, gen_params):
 
 if __name__ == '__main__':
 
-    for t in [0.001]:
-        for n in [25]:
-            num_training_steps = 750
+    for t in [0.1]:
+        for n in [15, 25, 50]:
+            num_training_steps = 200
             num_train_graphs = 1000
             num_validation_graphs = 100
             num_test_graphs = 100

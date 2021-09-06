@@ -135,7 +135,6 @@ class RNetDQNAgent(PyTorchAgent):
             _, q_sa, _ = self.net(cur_time % 3, list_st, list_at)
 
             # Calculates the loss use MSE from predicted and target values
-            # loss = F.mse_loss(q_sa, list_target)
             # Get TD error
             td = q_sa - list_target
             # Clip between max and min rewards
