@@ -9,7 +9,7 @@ sys.path.append('/relnet')
 
 data_root = Path('/experiment_data/development/models/eval_histories')
 figure_root = Path('/experiment_data/development/figures')
-p_er_bspgg = [0.3, 0.15, 0.1, 0.05]
+p_er_bspgg = [0.3, 0.2, 0.1, 0.05]
 # p_er_maj = [0.1, 0.05, 0.02, 0.005]
 p_er_maj = [19, 39, 62, 149]
 
@@ -306,28 +306,16 @@ def institution_plot():
                          var_name='PlanNet / Tax',
                          value_name='Objective')
 
-            if (i != 0) or (j != 0):
-                p = sns.lineplot(ax=ax[j, i],
-                                 data=df,
-                                 x="n_nodes",
-                                 y="Objective",
-                                 hue='Tax',
-                                 style='PlanNet / Tax',
-                                 style_order=['PlanNet + Tax', 'Only Tax'],
-                                 ci=95,
-                                 legend=None,
-                                 palette=sns.color_palette(palette='deep', n_colors=df.Tax.nunique()))
-            else:
-                p = sns.lineplot(ax=ax[j, i],
-                                 data=df,
-                                 x="n_nodes",
-                                 y="Objective",
-                                 hue='Tax',
-                                 style='PlanNet / Tax',
-                                 style_order=['PlanNet + Tax', 'Only Tax'],
-                                 ci=95,
-                                 legend=None,
-                                 palette=sns.color_palette(palette='deep', n_colors=df.Tax.nunique()))
+            p = sns.lineplot(ax=ax[j, i],
+                             data=df,
+                             x="n_nodes",
+                             y="Objective",
+                             hue='Tax',
+                             style='PlanNet / Tax',
+                             style_order=['PlanNet + Tax', 'Only Tax'],
+                             ci=95,
+                             legend=None,
+                             palette=sns.color_palette(palette='deep', n_colors=df.Tax.nunique()))
 
             p.set_xlim(left=15, right=50)
             p.set_ylim(bottom=0.2, top=1.001)
@@ -359,30 +347,85 @@ def institution_plot():
     plt.close()
 
 
-def real_world_plot(graph='ws', m=2, real_world=None):
-
+def real_world_plot():
     sns.set_style("darkgrid")
     figure_path = figure_root / f"Institution_real_world.png"
+    fig, ax = plt.subplots(2, 3, sharey='row', figsize=(12, 8))
+    headers = ['Only Tax', 'PlanNet + Tax', 'rand_end', 'policy_end']
 
-    headers = ['BR', 'PlanNet', 'rand_end', 'policy_end']
-    tax_vals = []
-    for t in ['0.0', '0.001', '0.1']:
-        node_vals = []
-        for n in [15, 25, 50]:
-            if real_world is None:
-                run_name_inst = f"MaxContribution_institution_{graph}_{n}_{m}_{t}"
-            elif real_world == 'karate':
-                run_name_inst = f"karate_{n}_{m}_{graph}_{t}"
-            else:
-                run_name_inst = f"saw_mill_{n}_{m}_{graph}_{t}"
+    for i, graph in enumerate(['karate', 'saw_mill']):
+        for j, type in enumerate(['ba', 'ws', 'real']):
+            tax_vals = []
+            for k, t in enumerate(['0.0', '0.001', '0.1']):
+                if j == 0:
+                    if i == 0:
+                        run_name_inst = f"karate_15_1_ba_{t}"
+                    else:
+                        run_name_inst = f"saw_mill_15_1_ba_{t}"
+                elif j == 1:
+                    if i == 0:
+                        run_name_inst = f"karate_15_2_ws_{t}"
+                    else:
+                        run_name_inst = f"saw_mill_15_2_ws_{t}"
+                else:
+                    if i == 0:
+                        run_name_inst = f"MaxContribution_institution_karate_{t}"
+                    else:
+                        run_name_inst = f"MaxContribution_institution_saw_mill_{t}"
+                inst_path = data_root / run_name_inst / "test.csv"
+                if inst_path.exists():
+                    df = pd.read_csv(inst_path, index_col=None, names=headers, skiprows=1)
+                else:
+                    raise BaseException("No such file in directory")
 
+                df['Tax'] = [t] * df.shape[0]
+                tax_vals.append(df)
+            df = pd.concat(tax_vals, axis=0, ignore_index=True)
+            del df['policy_end']
+            del df['rand_end']
+            df = pd.melt(df,
+                         id_vars=['Tax'],
+                         value_vars=['Only Tax', 'PlanNet + Tax'],
+                         var_name='PlanNet_Tax',
+                         value_name='Objective')
 
+            g = sns.barplot(ax=ax[i, j],
+                            data=df,
+                            x="Tax",
+                            y="Objective",
+                            hue='PlanNet_Tax',
+                            ci=95,
+                            palette=sns.color_palette(palette='deep', n_colors=df.PlanNet_Tax.nunique()),
+                            capsize=0.05)
+
+            g.set_ylim(bottom=0.0, top=1.001)
+            g.set_xlabel('Tax', fontsize=14)
+            if (i == 0) and (j == 0):
+                g.set_ylabel(r'Zachary karate club'
+                             '\n'
+                             r'$\mathcal{F}_{MC}$ on $G^{test}$',
+                             fontsize=14)
+            elif (i == 1) and (j == 0):
+                g.set_ylabel(r'Saw mill'
+                             '\n'
+                             r'$\mathcal{F}_{MC}$ on $G^{test}$',
+                             fontsize=14)
+            if (i == 0) and (j == 0):
+                g.title.set_text("Trained on Barabási–Albert graphs")
+            elif (i == 0) and (j == 1):
+                g.title.set_text("Trained on Watts–Strogatz graphs")
+            elif (i == 0) and (j == 2):
+                g.title.set_text("Trained on real world graphs")
+    plt.tight_layout()
+    plt.savefig(figure_path)
+    plt.close()
 
 
 if __name__ == '__main__':
 
     # plot_tests()
     # save_raw()
-    plot_oos(game='bspgg')
+    # plot_oos(game='bspgg')
     # plot_oos_curriculum()
     # institution_plot()
+    real_world_plot()

@@ -60,7 +60,7 @@ if __name__ == '__main__':
     agent = RNetDQNAgent(target_env)
     agent.setup(options, agent.get_default_hyperparameters())
 
-    for t in [0.0, 0.001, 0.1, 0.2]:
+    for t in [0.0, 0.001, 0.1]:
         print(f"Tax: {t}")
         for n in [15, 25, 50]:
             gen_params['n'] = n

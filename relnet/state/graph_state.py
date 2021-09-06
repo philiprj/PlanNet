@@ -481,7 +481,10 @@ class S2VGraph(object):
         :return: {1, 0} action depending on which is more valuable
         """
         # Get the fraction of contributing agents
-        c_reward = n_contributors / n_neighbours
+        try:
+            c_reward = n_contributors / n_neighbours
+        except ZeroDivisionError:
+            c_reward = 0
         d_reward = 1 - c_reward - self.tax
         if c_reward > d_reward:
             return 1.
