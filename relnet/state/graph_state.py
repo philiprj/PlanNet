@@ -11,12 +11,14 @@ from relnet.objective_functions.social_welfare import SocialWelfare
 budget_eps = 1e-5
 
 
-def random_action_init(g):
+def random_action_init(g, random_seed=None):
     """
     takes a graph and initialises the node actions to random in {0,1} and sets rewards = 0 for all nodes
     :param g: NetworkX graph
     :return: NetworkX graph with action and rewards attributes for all nodes
     """
+    if random_seed is not None:
+        random.seed(random_seed)
     # Loop elements in the graph
     for i in range(g.number_of_nodes()):
         # Init the actions and agent rewards to zero
@@ -27,7 +29,8 @@ def random_action_init(g):
 
 class S2VGraph(object):
     # Takes a NetworkX graph and converts to a S2V object
-    def __init__(self, g, game_type='majority', br_order=None, enforce_connected=True, institution=False, tax=0.1):
+    def __init__(self, g, game_type='majority', br_order=None,
+                 enforce_connected=True, institution=False, tax=0.1, seed=None):
         """
         :param g: NetworkX graph
         """
@@ -53,6 +56,9 @@ class S2VGraph(object):
         # Flag for institution
         self.use_inst = institution
         self.tax = tax
+        # Set random seed
+        if seed is not None:
+            random.seed(seed)
 
         # Set bool for enforcing a connected graph when removing edges
         self.enforce_connected = enforce_connected

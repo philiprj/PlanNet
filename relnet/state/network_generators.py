@@ -63,15 +63,15 @@ class NetworkGenerator(ABC):
             # If the file path exists then instance from graphml and get state from S2V - if not then create the graph
             if filepath.exists():
                 try:
-                    instance = self.read_graphml_with_ordered_int_labels(filepath)
-                    state = self.post_generate_instance(instance)
+                    instance = self.read_graphml_with_ordered_int_labels(filepath, random_seed)
+                    state = self.post_generate_instance(instance, random_seed)
                     should_create = False
                 except Exception:
                     should_create = True
             # If we need to create the graph then create using parameters and get the state
             if should_create:
                 instance = self.generate_instance(gen_params, random_seed)
-                state = self.post_generate_instance(instance)
+                state = self.post_generate_instance(instance, random_seed)
                 # Write the networkX graph to graphml file
                 nx.readwrite.write_graphml(instance, filepath.resolve())
                 # Draws S2V graph to file
@@ -81,12 +81,12 @@ class NetworkGenerator(ABC):
         # If not using a file then generate graph instance and convert to S2V
         else:
             instance = self.generate_instance(gen_params, random_seed)
-            state = self.post_generate_instance(instance)
+            state = self.post_generate_instance(instance, random_seed)
         # Return S2V state
         return state
 
     @staticmethod
-    def read_graphml_with_ordered_int_labels(filepath):
+    def read_graphml_with_ordered_int_labels(filepath, random_seed):
         """
         Reads the graphml file and generates graph instance
         :param filepath: Path to graphml file
@@ -113,7 +113,7 @@ class NetworkGenerator(ABC):
         pass
 
     @abstractmethod
-    def post_generate_instance(self, instance):
+    def post_generate_instance(self, instance, seed):
         pass
 
     @staticmethod
@@ -154,7 +154,7 @@ class NetworkGenerator(ABC):
 
 class OrdinaryGraphGenerator(NetworkGenerator, ABC):
     # Extends the NetworkGenerator class to create a S2V object
-    def post_generate_instance(self, instance):
+    def post_generate_instance(self, instance, seed):
         """
         Takes the networkX instance of a graph and converts to a S2V object
         :param instance: NetworkX graph instance
@@ -164,7 +164,8 @@ class OrdinaryGraphGenerator(NetworkGenerator, ABC):
                          self.game_type,
                          enforce_connected=self.enforce_connected,
                          institution=self.use_inst,
-                         tax=self.tax)
+                         tax=self.tax,
+                         seed=seed)
         # Builds a list of banned actions for the graph for quick access
         state.populate_banned_actions()
         return state
@@ -190,7 +191,7 @@ class GNMNetworkGenerator(OrdinaryGraphGenerator):
         # If we can have disconnections then simply generate the required networks
         if not self.enforce_connected:
             random_graph = nx.generators.random_graphs.fast_gnp_random_graph(number_vertices, p, seed=random_seed)
-            return random_action_init(random_graph)
+            return random_action_init(random_graph, random_seed)
         # Otherwise attempt to make graphs with no breaks, abort if break and try again
         else:
             for try_num in range(0, self.num_tries):
@@ -199,7 +200,7 @@ class GNMNetworkGenerator(OrdinaryGraphGenerator):
                                                                       p,
                                                                       seed=(random_seed + (try_num * 1000)))
                 if nx.is_connected(random_graph):
-                    return random_action_init(random_graph)
+                    return random_action_init(random_graph, random_seed)
                 else:
                     continue
             raise ValueError("Maximum number of tries exceeded, giving up...")
@@ -234,7 +235,7 @@ class BANetworkGenerator(OrdinaryGraphGenerator):
         n, m = gen_params['n'], gen_params['m_ba']
         ba_graph = nx.generators.random_graphs.barabasi_albert_graph(n, m, seed=random_seed)
         # Init the actions and rewards and return
-        ba_graph = random_action_init(ba_graph)
+        ba_graph = random_action_init(ba_graph, random_seed)
         return ba_graph
 
     @staticmethod
@@ -268,7 +269,7 @@ class WSNetworkGenerator(OrdinaryGraphGenerator):
         n, k, p = gen_params['n'], gen_params['k_ws'], gen_params['p_ws']
         ws_graph = nx.generators.random_graphs.connected_watts_strogatz_graph(n, k, p, seed=random_seed)
         # Init the actions and rewards and return
-        ws_graph = random_action_init(ws_graph)
+        ws_graph = random_action_init(ws_graph, random_seed)
         return ws_graph
 
     @staticmethod
@@ -291,7 +292,7 @@ class KarateClub(OrdinaryGraphGenerator):
 
     def generate_instance(self, gen_params, random_seed):
         g = nx.karate_club_graph()
-        g = random_action_init(g)
+        g = random_action_init(g, random_seed)
         return g
 
     @staticmethod
@@ -313,7 +314,7 @@ class SawMill(OrdinaryGraphGenerator):
         g = nx.read_pajek(path)
         g = nx.Graph(g)
         g = nx.convert_node_labels_to_integers(g)
-        g = random_action_init(g)
+        g = random_action_init(g, random_seed)
         return g
 
     @staticmethod

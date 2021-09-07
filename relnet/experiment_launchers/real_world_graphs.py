@@ -13,7 +13,7 @@ from relnet.experiment_launchers.run_institution import institution_get_identifi
 
 def get_gen_params():
     gp = {}
-    gp['type'] = 'ba'   # ['ba', 'ws', 'er']
+    gp['type'] = 'ws'   # ['ba', 'ws', 'er']
     gp['n'] = 15
     gp['m_ba'] = 1
     gp['k_ws'], gp['p_ws'] = 2, 0.5
@@ -62,7 +62,7 @@ if __name__ == '__main__':
 
     for t in [0.0, 0.001, 0.1]:
         print(f"Tax: {t}")
-        for n in [15, 25, 50]:
+        for n in [15]:
             gen_params['n'] = n
             gen_params['t'] = t
             options = get_options_real_world(file_paths, gen_params)
@@ -76,7 +76,7 @@ if __name__ == '__main__':
             # Create real world graphs
             g1 = KarateClub(**kwargs)
             g2 = SawMill(**kwargs)
-            _, _, test_graph_seeds = NetworkGenerator.construct_network_seeds(0, 0, 100)
+            _, _, test_graph_seeds = NetworkGenerator.construct_network_seeds(1000, 100, 100)
             test_graphs_karate = g1.generate_many(gen_params, test_graph_seeds)
             test_graphs_saw = g2.generate_many(gen_params, test_graph_seeds)
 

@@ -350,10 +350,13 @@ def institution_plot():
 def real_world_plot():
     sns.set_style("darkgrid")
     figure_path = figure_root / f"Institution_real_world.png"
-    fig, ax = plt.subplots(2, 3, sharey='row', figsize=(12, 8))
+    fig, ax = plt.subplots(2, 1, sharey='row', figsize=(11, 7))
     headers = ['Only Tax', 'PlanNet + Tax', 'rand_end', 'policy_end']
+    graphs = ['Barabási–Albert', 'Watts–Strogatz', 'real']
+    real_world = ['Karate Club', 'Saw Mill']
 
     for i, graph in enumerate(['karate', 'saw_mill']):
+        graph_vals = []
         for j, type in enumerate(['ba', 'ws', 'real']):
             tax_vals = []
             for k, t in enumerate(['0.0', '0.001', '0.1']):
@@ -383,39 +386,49 @@ def real_world_plot():
             df = pd.concat(tax_vals, axis=0, ignore_index=True)
             del df['policy_end']
             del df['rand_end']
-            df = pd.melt(df,
-                         id_vars=['Tax'],
-                         value_vars=['Only Tax', 'PlanNet + Tax'],
-                         var_name='PlanNet_Tax',
-                         value_name='Objective')
+            if j == 0:
+                df_temp = df[['Only Tax', 'Tax']].copy()
+                del df['Only Tax']
+                df_temp['Trained on'] = ['Tax Only'] * df_temp.shape[0]
+                if j != 2:
+                    df['Trained on'] = [graphs[j]] * df.shape[0]
+                else:
+                    df['Trained on'] = [real_world[i]] * df.shape[0]
+                df_temp.rename(columns = {'Only Tax': 'objective'}, inplace=True)
+                df.rename(columns={'PlanNet + Tax': 'objective'}, inplace=True)
+                graph_vals.append(df_temp)
+                graph_vals.append(df)
+            else:
+                del df['Only Tax']
+                if j != 2:
+                    df['Trained on'] = [graphs[j]] * df.shape[0]
+                else:
+                    df['Trained on'] = [real_world[i]] * df.shape[0]
+                df.rename(columns={'PlanNet + Tax': 'objective'}, inplace=True)
+                graph_vals.append(df)
 
-            g = sns.barplot(ax=ax[i, j],
-                            data=df,
-                            x="Tax",
-                            y="Objective",
-                            hue='PlanNet_Tax',
-                            ci=95,
-                            palette=sns.color_palette(palette='deep', n_colors=df.PlanNet_Tax.nunique()),
-                            capsize=0.05)
+        df = pd.concat(graph_vals, axis=0, ignore_index=True)
+        g = sns.barplot(ax=ax[i],
+                        data=df,
+                        x="Tax",
+                        y="objective",
+                        hue='Trained on',
+                        ci=95,
+                        palette=sns.color_palette(palette='deep', n_colors=df['Trained on'].nunique()),
+                        capsize=0.05)
 
-            g.set_ylim(bottom=0.0, top=1.001)
-            g.set_xlabel('Tax', fontsize=14)
-            if (i == 0) and (j == 0):
-                g.set_ylabel(r'Zachary karate club'
-                             '\n'
-                             r'$\mathcal{F}_{MC}$ on $G^{test}$',
-                             fontsize=14)
-            elif (i == 1) and (j == 0):
-                g.set_ylabel(r'Saw mill'
-                             '\n'
-                             r'$\mathcal{F}_{MC}$ on $G^{test}$',
-                             fontsize=14)
-            if (i == 0) and (j == 0):
-                g.title.set_text("Trained on Barabási–Albert graphs")
-            elif (i == 0) and (j == 1):
-                g.title.set_text("Trained on Watts–Strogatz graphs")
-            elif (i == 0) and (j == 2):
-                g.title.set_text("Trained on real world graphs")
+        g.set_ylim(bottom=0.4, top=1.001)
+        g.set_xlabel('Tax', fontsize=14)
+        if (i == 0):
+            g.set_ylabel(r'Zachary karate club'
+                         '\n'
+                         r'$\mathcal{F}_{MC}$ on $G^{test}$',
+                         fontsize=14)
+        else:
+            g.set_ylabel(r'Saw mill'
+                         '\n'
+                         r'$\mathcal{F}_{MC}$ on $G^{test}$',
+                         fontsize=14)
     plt.tight_layout()
     plt.savefig(figure_path)
     plt.close()

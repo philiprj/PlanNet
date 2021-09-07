@@ -48,8 +48,8 @@ def get_options(file_paths, gen_params, karate=True):
 
 
 if __name__ == '__main__':
-    num_training_steps = 400
-    num_train_graphs = 100
+    num_training_steps = 800
+    num_train_graphs = 1000
     num_validation_graphs = 100
     num_test_graphs = 100
     file_paths = get_file_paths()
@@ -81,6 +81,7 @@ if __name__ == '__main__':
         agent = RNetDQNAgent(target_env)
         agent.setup(options, agent.get_default_hyperparameters())
         agent.train(train_graphs, validation_graphs, num_training_steps)
+        # agent.update_test_history()
         test_perf = agent.eval(test_graphs, test_set=True)
         rand_agent = RandomAgent(target_env)
         rand_agent.setup(get_rand_options(file_paths), None)
@@ -98,6 +99,7 @@ if __name__ == '__main__':
         agent = RNetDQNAgent(target_env)
         agent.setup(options, agent.get_default_hyperparameters())
         agent.train(train_graphs, validation_graphs, num_training_steps)
+        # agent.update_test_history()
         test_perf = agent.eval(test_graphs, test_set=True)
         rand_agent = RandomAgent(target_env)
         rand_agent.setup(get_rand_options(file_paths), None)
