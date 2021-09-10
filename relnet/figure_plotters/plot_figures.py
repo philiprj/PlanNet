@@ -410,15 +410,15 @@ def real_world_plot():
         df = pd.concat(graph_vals, axis=0, ignore_index=True)
         g = sns.barplot(ax=ax[i],
                         data=df,
-                        x="Tax",
+                        x='Trained on',
                         y="objective",
-                        hue='Trained on',
+                        hue="Tax",
                         ci=95,
-                        palette=sns.color_palette(palette='deep', n_colors=df['Trained on'].nunique()),
+                        palette=sns.color_palette(palette='deep', n_colors=df['Tax'].nunique()),
                         capsize=0.05)
 
         g.set_ylim(bottom=0.4, top=1.001)
-        g.set_xlabel('Tax', fontsize=14)
+        g.set_xlabel('Graph trained on', fontsize=14)
         if (i == 0):
             g.set_ylabel(r'Zachary karate club'
                          '\n'
@@ -440,5 +440,5 @@ if __name__ == '__main__':
     # save_raw()
     # plot_oos(game='majority')
     # plot_oos_curriculum()
-    institution_plot()
-    # real_world_plot()
+    # institution_plot()
+    real_world_plot()
