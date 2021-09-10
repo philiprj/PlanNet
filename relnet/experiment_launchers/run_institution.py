@@ -17,7 +17,7 @@ def get_gen_params():
     # Defines the network generation parameters
     gp = {}
     # Define the type of graph
-    gp['type'] = 'ws'   # ['ba', 'ws', 'er']
+    gp['type'] = 'ba'   # ['ba', 'ws', 'er']
     # Nodes
     gp['n'] = 25
     # Parameters for Barabasi-Albert Graph
@@ -74,7 +74,7 @@ def get_options(file_paths, gen_params):
 
 if __name__ == '__main__':
 
-    for t in [0.1]:
+    for t in [0.0, 0.001, 0.1]:
         for n in [15, 25, 50]:
             num_training_steps = 200
             num_train_graphs = 1000
@@ -114,8 +114,8 @@ if __name__ == '__main__':
             agent.setup(options, agent.get_default_hyperparameters())
 
             # If not training comment out and just set up test history file
-            agent.train(train_graphs, validation_graphs, num_training_steps)
-            # agent.update_test_history()
+            # agent.train(train_graphs, validation_graphs, num_training_steps)
+            agent.update_test_history()
 
             test_perf = agent.eval(test_graphs, test_set=True)
             # Compare to the random baseline

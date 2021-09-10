@@ -13,24 +13,17 @@ from relnet.experiment_launchers.curriculum_learner import curriculum_identifier
 
 
 def get_gen_params():
-    # Defines the network generation parameters
     gp = {}
-    # Define the type of graph
-    gp['type'] = 'ba'   # ['ba', 'ws', 'er']
-    # Nodes
+    gp['type'] = 'ws'   # ['ba', 'ws', 'er']
     gp['n'] = 15
-    # Parameters for Barabasi-Albert Graph
-    gp['m_ba'] = 4
-    # Parameters for Watts-Strogatz Graph
-    gp['k_ws'], gp['p_ws'] = 4, 0.5
-    # Number of edges compared to nodes
-    gp['m_percentage_er'] = 3
-    gp['m'] = NetworkGenerator.compute_number_edges(gp['n'], gp['m_percentage_er'])
+    gp['m_ba'] = 1
+    gp['k_ws'], gp['p_ws'] = 2, 0.5
+    gp['er_p'] = 0.3
     return gp
 
 
 def get_options_oos(file_paths, gen_params):
-    game_type = 'bspgg'  # ['majority', 'bspgg']
+    game_type = 'majority'  # ['majority', 'bspgg']
 
     options = {"random_seed": 42,
                "models_path": file_paths.models_dir,
@@ -47,12 +40,14 @@ if __name__ == '__main__':
     file_paths = get_file_paths()
     storage_root = Path('/experiment_data/stored_graphs')
     original_dataset_dir = Path('/experiment_data/real_world_graphs/processed_data')
+    p_er_bspgg = [0.3, 0.2, 0.1, 0.05]
+    p_er_maj = [0.1, 0.07, 0.05, 0.03]
+    p_er_bspgg1 = [0.3, 0.1, 0.05]
+    p_er_maj1 = [0.1, 0.05, 0.03]
 
-    p_er_bspgg = [0.2, 0.15, 0.1, 0.05]
-    p_er_maj = [0.1, 0.05, 0.02, 0.005]
+    for g_type in ['ba', 'ws']:
+        gen_params['type'] = g_type
 
-    for N in [15, 50, 100]:
-        gen_params['n'] = N
         options = get_options_oos(file_paths, gen_params)
         kwargs = {'store_graphs': True,
                   'graph_storage_root': storage_root,
@@ -84,9 +79,9 @@ if __name__ == '__main__':
                     gen = WSNetworkGenerator(**kwargs)
                 else:
                     if options["game_type"] == 'majority':
-                        gen_params_copy['m'] = 0.1
+                        gen_params_copy['er_p'] = p_er_maj[i]
                     else:
-                        gen_params_copy['m'] = 0.3
+                        gen_params_copy['er_p'] = p_er_bspgg[i]
                     gen = GNMNetworkGenerator(**kwargs)
                 # Set up new graphs and test
                 test_graphs = gen.generate_many(gen_params_copy, test_graph_seeds)

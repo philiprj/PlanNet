@@ -28,7 +28,7 @@ def get_gen_params():
     # gp['k_ws'], gp['p_ws'] = 4, 0.5
     # Set erdos renyi edge probability
     # gp['er_p'] = 0.1
-    gp['er_p'] = 0.2
+    gp['er_p'] = 0.03
 
     return gp
 
@@ -47,7 +47,7 @@ def get_identifier_prefix(gen_params, gtype):
 
 def get_options(file_paths, gen_params):
     # Defines the general options for logging/saving results
-    game_type = 'bspgg'  # ['majority', 'bspgg']
+    game_type = 'majority'  # ['majority', 'bspgg']
 
     options = {"log_progress": True,
                "log_filename": str(file_paths.construct_log_filepath()),
@@ -92,8 +92,9 @@ if __name__ == '__main__':
     num_train_graphs = 1000
     num_validation_graphs = 100
     num_test_graphs = 100
+    p_er_maj = [0.1, 0.07, 0.05, 0.03]
 
-    for N in [25]:
+    for N in [100]:
         # Gets the training parameters and save paths
         gen_params = get_gen_params()
         gen_params['n'] = N

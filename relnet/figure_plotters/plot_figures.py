@@ -10,12 +10,13 @@ sys.path.append('/relnet')
 data_root = Path('/experiment_data/development/models/eval_histories')
 figure_root = Path('/experiment_data/development/figures')
 p_er_bspgg = [0.3, 0.2, 0.1, 0.05]
-# p_er_maj = [0.1, 0.05, 0.02, 0.005]
-p_er_maj = [19, 39, 62, 149]
+p_er_maj = [0.1, 0.07, 0.05, 0.03]
+# p_er_maj = [19, 39, 62, 149]
 
 
 def plot_tests():
-
+    p_er_bspgg = [0.3, 0.2, 0.1, 0.05]
+    p_er_maj = [0.1, 0.07, 0.05, 0.03]
     figure_path = figure_root / f"test_graphs.png"
     sns.set_style("darkgrid")
     fig, ax = plt.subplots(2, 3, sharex='col', sharey='row', figsize=(12, 8))
@@ -102,6 +103,8 @@ def plot_tests():
 
 
 def save_raw():
+    p_er_bspgg = [0.3, 0.2, 0.1, 0.05]
+    p_er_maj = [0.1, 0.07, 0.05, 0.03]
     figure_path = figure_root / f"validation_graphs.png"
     sns.set_style("darkgrid")
     fig, ax = plt.subplots(2, 3, sharex='col', sharey='row', figsize=(12, 8))
@@ -166,10 +169,9 @@ def save_raw():
 def plot_oos(game='bspgg'):
     figure_path = figure_root / f"oos_{game}_graphs.png"
     sns.set_style("darkgrid")
-    fig, ax = plt.subplots(3, 3, sharex='col', sharey='row', figsize=(12, 8))
-    p_er_bspgg = [0.3, 0.1, 0.05]
-    # p_er_maj = [0.1, 0.05, 0.02, 0.005]
-    p_er_maj = [19, 62, 149]
+    fig, ax = plt.subplots(3, 3, sharex='col', sharey='row', figsize=(12, 10))
+    p_er_bspgg_oos = [0.3, 0.1, 0.05]
+    p_er_maj_oos = [0.1, 0.05, 0.03]
 
     for j, graph in enumerate(['ba', 'ws', 'er']):
         for k, nodes in enumerate([15, 50, 100]):
@@ -177,14 +179,14 @@ def plot_oos(game='bspgg'):
                 if (graph == 'ba') or (graph == 'ws'):
                     m = 4
                 else:
-                    m = p_er_bspgg[k]
+                    m = p_er_bspgg_oos[k]
             else:
                 if graph == 'ba':
                     m = 1
                 elif graph == 'ws':
                     m = 2
                 else:
-                    m = p_er_maj[k]
+                    m = p_er_maj_oos[k]
 
             run_name = f"{game}_{graph}_{nodes}_{m}"
             raw_path = data_root / run_name / "out_of_sample.csv"
@@ -198,18 +200,18 @@ def plot_oos(game='bspgg'):
                              ci=95, legend=False, palette=sns.color_palette('deep', n_colors=df.g_type.nunique()))
 
             p.set_xlim(left=15, right=100)
-            p.set_ylim(bottom=-0.02, top=0.065)
+            p.set_ylim(bottom=-0.02, top=0.08)
             p.set_xlabel('Test graph number of nodes', fontsize=14)
             if j == 0:
-                p.set_ylabel(r'Barabási–Albert'
+                p.set_ylabel(r'Trained on Barabási–Albert'
                              '\n'
-                             r'$G^{test}$ change')
+                             r'$G^{test}$ change', fontsize=14)
             elif j == 1:
-                p.set_ylabel(r'Watts–Strogatz'
+                p.set_ylabel(r'Trained on Watts–Strogatz'
                              '\n'
                              r'$G^{test}$ change', fontsize=14)
             else:
-                p.set_ylabel(r'Erdős–Rényi'
+                p.set_ylabel(r'Trained on Erdős–Rényi'
                              '\n'
                              r'$G^{test}$ change', fontsize=14)
             if (j == 0) and (k == 0):
@@ -218,13 +220,12 @@ def plot_oos(game='bspgg'):
                 p.set_title("Trained on n=50", fontsize=14)
             elif (j == 0) and (k == 2):
                 p.set_title("Trained on n=100", fontsize=14)
-            # if (j == 1) and (k == 2):
-            #     p.legend(title='Test graph type', loc='center right', bbox_to_anchor=(1.2, 1.0),
-            #              labels=["Barabási–Albert", "Watts–Strogatz", "Erdős–Rényi"])
 
     labels = ["Barabási–Albert", "Watts–Strogatz", "Erdős–Rényi"]
-    fig.legend(labels=labels, loc='upper center', bbox_to_anchor=(0.5, 1), borderaxespad=0, fontsize=11, ncol=3)
-    plt.tight_layout(pad=3.2)
+    fig.legend(title='Test graphs', labels=labels, loc='upper center', bbox_to_anchor=(0.5, 1.0), borderaxespad=0,
+               fontsize=12, ncol=3)
+    plt.tight_layout(pad=1.2)
+    plt.subplots_adjust(top=0.91)
     plt.savefig(figure_path)
     plt.close()
 
@@ -247,7 +248,7 @@ def plot_oos_curriculum():
             p = sns.lineplot(ax=ax[i, j], data=df, x="nodes", y="improvement", hue='g_type',
                              ci=95, legend=False, palette=sns.color_palette('deep', n_colors=df.g_type.nunique()))
             p.set_xlim(left=15, right=100)
-            p.set_ylim(bottom=-0.02, top=0.065)
+            p.set_ylim(bottom=-0.02, top=0.08)
             p.set_xlabel('Test graph number of nodes', fontsize=14)
             if i == 0:
                 p.set_ylabel(r'Best-shot public goods game'
@@ -261,13 +262,12 @@ def plot_oos_curriculum():
                 p.set_title("Trained on Barabási–Albert graphs", fontsize=14)
             elif (i == 0) and (j == 1):
                 p.set_title("Trained on Watts–Strogatz graphs", fontsize=14)
-            # if (i == 0) and (j == 0):
-            #     p.legend(title='Test graph type', loc='upper left',
-            #              labels=["Barabási–Albert", "Watts–Strogatz", "Erdős–Rényi"])
 
     labels = ["Barabási–Albert", "Watts–Strogatz", "Erdős–Rényi"]
-    fig.legend(labels=labels, loc='upper center', bbox_to_anchor=(0.5, 1), borderaxespad=0, fontsize=11, ncol=3)
-    plt.tight_layout(pad=3.2)
+    fig.legend(title='Test graphs', labels=labels, loc='upper center', bbox_to_anchor=(0.5, 1.0), borderaxespad=0,
+               fontsize=12, ncol=3)
+    plt.tight_layout(pad=1.2)
+    plt.subplots_adjust(top=0.89)
     plt.savefig(figure_path)
     plt.close()
 
@@ -438,7 +438,7 @@ if __name__ == '__main__':
 
     # plot_tests()
     # save_raw()
-    # plot_oos(game='bspgg')
+    # plot_oos(game='majority')
     # plot_oos_curriculum()
-    # institution_plot()
-    real_world_plot()
+    institution_plot()
+    # real_world_plot()
