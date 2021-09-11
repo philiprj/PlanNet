@@ -5,10 +5,16 @@ from relnet.utils.config_utils import local_seed
 from itertools import product
 import numpy as np
 
+
 def generate_search_space(parameter_grid,
                           random_search=False,
                           random_search_num_options=20,
                           random_search_seed=42):
+    """
+    Performs a grid search for parameters - not used here for computational purposes.
+    :return: reduced search space for parameter tuning
+    """
+
     combinations = list(product(*parameter_grid.values()))
     search_space = {i: combinations[i] for i in range(len(combinations))}
 
@@ -24,6 +30,9 @@ def generate_search_space(parameter_grid,
 
 
 def get_values_for_g_list(agent, g_list, initial_obj_values, validation, make_action_kwargs):
+    """
+    Runs the action selection until terminal state and gets objective function values.
+    """
     if initial_obj_values is None:
         obj_values = agent.environment.get_objective_function_values(g_list)
     else:
@@ -36,21 +45,24 @@ def get_values_for_g_list(agent, g_list, initial_obj_values, validation, make_ac
 
         action_kwargs = (make_action_kwargs or {})
         list_at = agent.make_actions(t, **action_kwargs)
-        # print(f"at step {t} agent picked actions {list_at}")
+        list_a_types = [g.action_type for g in g_list]
 
-        if not validation:
-            agent.environment.objective_function_kwargs["random_seed"] += 1
-
-        agent.environment.step(list_at)
+        agent.environment.step(list_at, list_a_types)
         t += 1
     final_obj_values = agent.environment.get_final_values()
     return obj_values, final_obj_values
 
-def eval_on_dataset(initial_objective_function_values,
-                    final_objective_function_values):
-    return np.mean(final_objective_function_values - initial_objective_function_values)
+
+def eval_on_dataset(initial_objective_function_values, final_objective_function_values, mean=True):
+    # Return the mean error or array of error values.
+    if mean:
+        return np.mean(final_objective_function_values - initial_objective_function_values)
+    else:
+        return final_objective_function_values - initial_objective_function_values
+
 
 def record_episode_histories(agent, g_list):
+    # Records the state-action histories over the graphs until terminal.
     states, actions, rewards, initial_values = [], [], [], []
 
     nets = [deepcopy(g) for g in g_list]
@@ -66,7 +78,9 @@ def record_episode_histories(agent, g_list):
         actions.append(list_at)
         rewards.append([0] * len(list_at))
 
-        agent.environment.step(list_at)
+        _, _, _, a_types = zip(*list_st)
+
+        agent.environment.step(list_at, a_types)
         t += 1
 
     final_states = deepcopy(agent.environment.g_list)

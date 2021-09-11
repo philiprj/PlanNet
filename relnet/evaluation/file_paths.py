@@ -52,7 +52,6 @@ class FilePaths:
 
             self.set_group_permissions()
 
-
     def set_group_permissions(self):
         try:
             for dir in [self.graph_storage_dir, self.logs_dir, self.experiment_dir]:
@@ -90,8 +89,8 @@ class FilePaths:
         return model_identifier_prefix
 
     @staticmethod
-    def construct_history_file_name(model_identifier_prefix):
-        return f"{model_identifier_prefix}_history.csv"
+    def construct_history_file_name(file_type):
+        return f"{file_type}.csv"
 
     @staticmethod
     def construct_best_validation_file_name(model_identifier_prefix):

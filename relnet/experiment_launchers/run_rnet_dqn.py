@@ -1,64 +1,164 @@
 import sys
+from copy import deepcopy
 from pathlib import Path
 
 sys.path.append('/relnet')
-
 from relnet.agent.pytorch_agent import PyTorchAgent
 from relnet.agent.rnet_dqn.rnet_dqn_agent import RNetDQNAgent
+from relnet.agent.baseline.baseline_agent import RandomAgent, EdgeConnectAgent, LowDegreeTarget
 from relnet.environment.graph_edge_env import GraphEdgeEnv
 from relnet.evaluation.file_paths import FilePaths
-from relnet.objective_functions.objective_functions import CriticalFractionTargeted, CriticalFractionRandom
-from relnet.state.network_generators import NetworkGenerator, BANetworkGenerator
+from relnet.state.network_generators import NetworkGenerator, BANetworkGenerator, WSNetworkGenerator, \
+    GNMNetworkGenerator
+from relnet.objective_functions.social_welfare import SocialWelfare
+
 
 def get_gen_params():
+    # Defines the network generation parameters
     gp = {}
-    gp['n'] = 20
-    gp['m_ba'] = 2
-    gp['m_percentage_er'] = 20
-    gp['m'] = NetworkGenerator.compute_number_edges(gp['n'], gp['m_percentage_er'])
+    # Define the type of graph
+    gp['type'] = 'er'   # ['ba', 'ws', 'er']
+    # Nodes
+    gp['n'] = 25
+    # Parameters for Barabasi-Albert Graph
+    gp['m_ba'] = 1
+    # gp['m_ba'] = 4
+    # Parameters for Watts-Strogatz Graph
+    gp['k_ws'], gp['p_ws'] = 2, 0.5
+    # gp['k_ws'], gp['p_ws'] = 4, 0.5
+    # Set erdos renyi edge probability
+    # gp['er_p'] = 0.1
+    gp['er_p'] = 0.03
+
     return gp
 
-def get_options(file_paths):
+
+def get_identifier_prefix(gen_params, gtype):
+
+    if gen_params['type'] == 'ba':
+        m = gen_params['m_ba']
+    elif gen_params['type'] == 'ws':
+        m = gen_params['k_ws']
+    else:
+        m = gen_params['er_p']
+
+    return f"{gtype}_{gen_params['type']}_{gen_params['n']}_{m}"
+
+
+def get_options(file_paths, gen_params):
+    # Defines the general options for logging/saving results
+    game_type = 'majority'  # ['majority', 'bspgg']
+
     options = {"log_progress": True,
                "log_filename": str(file_paths.construct_log_filepath()),
                "log_tf_summaries": True,
                "random_seed": 42,
                "models_path": file_paths.models_dir,
-               "restore_model": False}
+               "game_type": game_type,
+               'model_identifier_prefix': get_identifier_prefix(gen_params, game_type),
+               "restore_model": False,
+               "validation_check_interval": 50,
+               'reward_shaping': True,
+               'pytorch_full_print': False,
+               'max_validation_consecutive_steps': 1000,
+               'double': True,
+               'soft': True,
+               'tau': 0.1,
+               'discount': 0.99}
     return options
 
+
+def get_rand_options(file_paths):
+    options = {"log_progress": True,
+               "log_filename": str(file_paths.construct_log_filepath()),
+               "log_tf_summaries": True,
+               "random_seed": 42,
+               "models_path": file_paths.models_dir,
+               'model_identifier_prefix': 'majority-random'}
+    return options
+
+
 def get_file_paths():
+    # Gets the file saves paths
     parent_dir = '/experiment_data'
     experiment_id = 'development'
     file_paths = FilePaths(parent_dir, experiment_id)
     return file_paths
 
+
 if __name__ == '__main__':
-    num_training_steps = 5000
-    num_train_graphs = 100
-    num_validation_graphs = 20
-    num_test_graphs = 20
+    # Defines the number of training steps, and graphs for train/validation/test
+    num_training_steps = 1000
+    num_train_graphs = 1000
+    num_validation_graphs = 100
+    num_test_graphs = 100
+    p_er_maj = [0.1, 0.07, 0.05, 0.03]
 
-    gen_params = get_gen_params()
-    file_paths = get_file_paths()
+    for N in [100]:
+        # Gets the training parameters and save paths
+        gen_params = get_gen_params()
+        gen_params['n'] = N
+        file_paths = get_file_paths()
+        # Defines the training logging details
+        options = get_options(file_paths, gen_params)
+        storage_root = Path('/experiment_data/stored_graphs')
+        original_dataset_dir = Path('/experiment_data/real_world_graphs/processed_data')
 
-    options = get_options(file_paths)
-    storage_root = Path('/experiment_data/stored_graphs')
-    original_dataset_dir = Path('/experiment_data/real_world_graphs/processed_data')
-    kwargs = {'store_graphs': True, 'graph_storage_root': storage_root}
-    gen = BANetworkGenerator(**kwargs)
+        # Setting the game type to play
+        kwargs = {'store_graphs': True,
+                  'graph_storage_root': storage_root,
+                  'game_type': options["game_type"],
+                  'enforce_connected': False}
+        if gen_params['type'] == 'ba':
+            gen = BANetworkGenerator(**kwargs)
+        elif gen_params['type'] == 'ws':
+            gen = WSNetworkGenerator(**kwargs)
+        elif gen_params['type'] == 'er':
+            gen = GNMNetworkGenerator(**kwargs)
 
-    train_graph_seeds, validation_graph_seeds, test_graph_seeds = NetworkGenerator.construct_network_seeds(num_train_graphs, num_validation_graphs, num_test_graphs)
+        # Generate random seeds for create graphs
+        train_graph_seeds, validation_graph_seeds, test_graph_seeds = \
+            NetworkGenerator.construct_network_seeds(num_train_graphs, num_validation_graphs, num_test_graphs)
 
-    train_graphs = gen.generate_many(gen_params, train_graph_seeds)
-    validation_graphs = gen.generate_many(gen_params, validation_graph_seeds)
-    test_graphs = gen.generate_many(gen_params, test_graph_seeds)
+        # Creates our graphs - just lists so we could append different graph sizes to the list
+        train_graphs = gen.generate_many(gen_params, train_graph_seeds)
+        validation_graphs = gen.generate_many(gen_params, validation_graph_seeds)
+        test_graphs = gen.generate_many(gen_params, test_graph_seeds)
 
-    edge_percentage = 2.5
-    obj_fun_kwargs = {"random_seed": 42, "num_mc_sims": gen_params['n'] * 2}
-    targ_env = GraphEdgeEnv(CriticalFractionRandom(), obj_fun_kwargs, edge_percentage)
+        # Edge percentage - number of moves as percentage of initial edges
+        edge_percentage = 10.0
+        # Creates the graph environment which the agent will work with
+        target_env = GraphEdgeEnv(SocialWelfare, edge_percentage)
+        # Init the DQN agent and set it up with hyperparameters
+        agent = RNetDQNAgent(target_env)
+        agent.setup(options, agent.get_default_hyperparameters())
+        # Training for given number of steps - validating on validation graphs
+        agent.train(train_graphs, validation_graphs, num_training_steps)
+        # Evaluate the best model agent on the test graphs
+        test_perf = agent.eval(test_graphs, test_set=True)
 
-    agent = RNetDQNAgent(targ_env)
-    agent.setup(options, agent.get_default_hyperparameters())
-    agent.train(train_graphs, validation_graphs, num_training_steps)
-    avg_perf = agent.eval(test_graphs)
+        # Get baseline performance
+        rand_agent = RandomAgent(target_env)
+        rand_agent.setup(get_rand_options(file_paths), None)
+        baseline_perf = rand_agent.eval(test_graphs, test_set=True, baseline=True)
+
+        # Get Added baseline
+        if options['game_type'] == 'majority':
+            hard_coded_baseline = EdgeConnectAgent(target_env)
+            hard_coded_baseline.setup(get_rand_options(file_paths), None)
+            baseline_2 = hard_coded_baseline.eval(test_graphs, test_set=True, baseline=True)
+            # agent.update_test_history()    # Comment this line out if training
+            agent.update_test_performance(test_perf,
+                                       baseline_perf,
+                                       agent.initial_obj_values,
+                                       agent.final_obj_values,
+                                       rand_agent.final_obj_values,
+                                       baseline_2,
+                                       hard_coded_baseline.final_obj_values)
+        else:
+            # agent.update_test_history()    # Comment this line out if training
+            agent.log_test_performance(test_perf,
+                                       baseline_perf,
+                                       agent.initial_obj_values,
+                                       agent.final_obj_values,
+                                       rand_agent.final_obj_values)
