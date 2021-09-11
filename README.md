@@ -67,5 +67,5 @@ docker exec -it relnet-manager /bin/bash -c "source activate ucfadar-relnet && p
 ## Problems with jupyter kernel
 In case the `python-relnet` kernel is not found, try reinstalling the kernel by running `docker exec -it relnet-manager /bin/bash -c "source activate ucfadar-relnet; python -m ipykernel install --user --name relnet --display-name python-relnet"`
 
-## Contact
-If you face any issues or have any queries feel free to contact `v.darvariu@ucl.ac.uk` and I will be happy to assist.
+<!-- ## Contact
+If you face any issues or have any queries feel free to contact `v.darvariu@ucl.ac.uk` and I will be happy to assist. -->
