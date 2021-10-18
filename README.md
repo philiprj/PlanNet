@@ -1,6 +1,16 @@
 # PlanNet
 A framework for network game alterations using reinforcement learning.
 
+## Paper Abstract
+
+Network games can be used for modelling rational agents' decision making in a complexly connected society, but often we observe that agents' actions may be beneficial to the individual but harmful to society at large. In this work, we seek to maximise social objectives for a network of connected agents by taking the perspective of a central planner. We use the majority and best-shot public goods games to study this problem.
+
+Current approaches to this task find sub-optimal solutions or rely on specific structural properties of the graphs. We propose an efficient approach to promoting social objectives using reinforcement learning from the perspective of a centralised planner to learn policies for making changes directly to the graph. Further, we parameterise this planner with a graph neural network to represent the learned policy so it may generalise to unseen graph topologies. We define a Markov Decision Process, which forms or eliminates edges between individual agents or incentivises agents to change actions. We test our central planner approach, named \emph{PlanNet}, on a range of synthetic graph structures and sizes, which mimic social structures observed in society, and on a set of real-world social graphs. 
+
+Furthermore, we investigate the use of \emph{institutions} in coordination with a central planner to incentivise contributions in the majority game. We propose how this approach may be used to model vaccine hesitancy induced by social pressures and how a central authority may impose restrictions, such as vaccine passports, or make interventions such as forming connections between two individuals to increase uptake of vaccines. 
+
+Our evaluation on real-world and synthetic graphs demonstrates that the policy learned can improve upon the equilibrium found by best response dynamics in both studied games. Further, we observe that the coordination of both the central planer and institutions can outperform the usage of either approach on their own. We further show that training only on the smallest size graphs produces generalisable results that are successful on the largest synthetic graphs tested and on real-world social graphs.
+
 ## Prerequisites
 Currently supported on macOS and Linux (tested on CentOS 7.4.1708, but should work out of the box on any standard Linux distro), as well as on Windows via [WSL](https://docs.microsoft.com/en-us/windows/wsl/install-win10).
 Makes heavy use of Docker, see e.g. [here](https://docs.docker.com/engine/install/) for how to install. Tested with Docker 19.03. The use of Docker largely does away with dependency and setup headaches, making it significantly easier to reproduce the reported results.
