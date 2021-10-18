@@ -5,7 +5,7 @@ A framework for network game alterations using reinforcement learning.
 
 Network games can be used for modelling rational agents' decision making in a complexly connected society, but often we observe that agents' actions may be beneficial to the individual but harmful to society at large. In this work, we seek to maximise social objectives for a network of connected agents by taking the perspective of a central planner. We use the majority and best-shot public goods games to study this problem.
 
-Current approaches to this task find sub-optimal solutions or rely on specific structural properties of the graphs. We propose an efficient approach to promoting social objectives using reinforcement learning from the perspective of a centralised planner to learn policies for making changes directly to the graph. Further, we parameterise this planner with a graph neural network to represent the learned policy so it may generalise to unseen graph topologies. We define a Markov Decision Process, which forms or eliminates edges between individual agents or incentivises agents to change actions. We test our central planner approach, named \emph{PlanNet}, on a range of synthetic graph structures and sizes, which mimic social structures observed in society, and on a set of real-world social graphs. 
+Current approaches to this task find sub-optimal solutions or rely on specific structural properties of the graphs. We propose an efficient approach to promoting social objectives using reinforcement learning from the perspective of a centralised planner to learn policies for making changes directly to the graph. Further, we parameterise this planner with a graph neural network to represent the learned policy so it may generalise to unseen graph topologies. We define a Markov Decision Process, which forms or eliminates edges between individual agents or incentivises agents to change actions. We test our central planner approach, named PlanNet, on a range of synthetic graph structures and sizes, which mimic social structures observed in society, and on a set of real-world social graphs. 
 
 Furthermore, we investigate the use of institutions in coordination with a central planner to incentivise contributions in the majority game. We propose how this approach may be used to model vaccine hesitancy induced by social pressures and how a central authority may impose restrictions, such as vaccine passports, or make interventions such as forming connections between two individuals to increase uptake of vaccines. 
 
@@ -74,8 +74,10 @@ Example for how to run:
 ```bash
 docker exec -it relnet-manager /bin/bash -c "source activate ucfadar-relnet && python relnet/experiment_launchers/run_rnet_dqn.py"
 ```
+Further experiments can be found in the experiment_launchers subfolder, including real-world social graph and institutional experiments. 
+
 ## Problems with jupyter kernel
 In case the `python-relnet` kernel is not found, try reinstalling the kernel by running `docker exec -it relnet-manager /bin/bash -c "source activate ucfadar-relnet; python -m ipykernel install --user --name relnet --display-name python-relnet"`
 
-<!-- ## Contact
-If you face any issues or have any queries feel free to contact `v.darvariu@ucl.ac.uk` and I will be happy to assist. -->
+## Contact
+If you face any issues or have any queries feel free to contact `philip.redford-jones@ucl.ac.uk` and I will be happy to assist.
